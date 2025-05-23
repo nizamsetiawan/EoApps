@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "666289518279",
+    "project_id": "kenongo-task-e6a5a",
+    "storage_bucket": "kenongo-task-e6a5a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:666289518279:android:e33fcb1c499ed34909f0e2",
+        "android_client_info": {
+          "package_name": "com.example.kenongotask2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCfcByAZ6ZccSVWCyiS5wD5M30u0bPL_A4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -143,7 +143,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
               title: 'Pengingat Task',
               body: 'Task "$_namaTugas" akan dimulai dalam ${2 * i} menit',
               scheduledTime: reminderTime,
-              taskId: '${_namaTugas}_reminder_$i',
+              notificationId: '${_namaTugas}_reminder_$i'.hashCode,
             );
           }
         }

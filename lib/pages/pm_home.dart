@@ -11,6 +11,9 @@ import '../services/image_service.dart';
 import 'dart:io';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:math' show max;
+import '../models/notification.dart';
+import 'package:intl/intl.dart';
+import '../services/task_notification_service.dart';
 
 class PMHomePage extends StatefulWidget {
   final String role;
@@ -36,12 +39,15 @@ class _PMHomePageState extends State<PMHomePage> {
   DateTime _startDate = DateTime.now().subtract(const Duration(days: 30));
   DateTime _endDate = DateTime.now();
   bool _isDateRangeMode = false;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  User? _currentUser;
 
   @override
   void initState() {
     super.initState();
     _loadDataClients();
     _getFCMToken();
+    _currentUser = _auth.currentUser;
   }
 
   void _loadDataClients() async {
@@ -1883,28 +1889,16 @@ class _PMHomePageState extends State<PMHomePage> {
 
   //====================================== Notifications Page Placeholder ====
   Widget _buildNotificationsPage() {
-    if (_isTokenLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_fcmToken == null) {
-      return const Center(
-        child: Text('FCM Token not available. Cannot load notifications.'),
-      );
-    }
-
     return StreamBuilder<QuerySnapshot>(
       stream:
           FirebaseFirestore.instance
               .collection('notifications')
-              .where('token', isEqualTo: _fcmToken)
+              .where('userId')
               .orderBy('timestamp', descending: true)
               .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return Center(
-            child: Text('Error loading notifications: ${snapshot.error}'),
-          );
+          return const Center(child: Text('Terjadi kesalahan'));
         }
 
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -1912,56 +1906,94 @@ class _PMHomePageState extends State<PMHomePage> {
         }
 
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(child: Text('Tidak ada notifikasi.'));
+          return const Center(
+            child: Text('Belum ada notifikasi', style: TextStyle(fontSize: 16)),
+          );
         }
 
-        final notifications = snapshot.data!.docs;
-
         return ListView.builder(
-          padding: const EdgeInsets.all(8.0),
-          itemCount: notifications.length,
+          padding: const EdgeInsets.all(16),
+          itemCount: snapshot.data!.docs.length,
           itemBuilder: (context, index) {
-            final notification =
-                notifications[index].data() as Map<String, dynamic>;
-            final title = notification['title'] ?? 'No Title';
-            final body = notification['body'] ?? 'No Body';
-            final timestamp = notification['timestamp'] as Timestamp?;
-            final formattedTime =
-                timestamp != null
-                    ? '${timestamp.toDate().toLocal()}'.split('.')[0]
-                    : 'Unknown time';
-
-            return Card(
-              margin: const EdgeInsets.symmetric(vertical: 4.0),
-              elevation: 2.0,
-              child: ListTile(
-                leading: const Icon(
-                  Icons.notifications,
-                  color: Color.fromARGB(255, 33, 83, 36),
-                ),
-                title: Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(body),
-                    const SizedBox(height: 4.0),
-                    Text(
-                      formattedTime,
-                      style: const TextStyle(
-                        fontSize: 12.0,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            final notification = NotificationModel.fromFirestore(
+              snapshot.data!.docs[index],
             );
+            return _buildNotificationCard(notification);
           },
         );
       },
+    );
+  }
+
+  Widget _buildNotificationCard(NotificationModel notification) {
+    IconData iconData;
+    Color iconColor;
+
+    switch (notification.type) {
+      case 'task_created':
+        iconData = Icons.add_task;
+        iconColor = Colors.green;
+        break;
+      case 'reminder':
+        iconData = Icons.alarm;
+        iconColor = Colors.orange;
+        break;
+      case 'status_changed':
+        iconData = Icons.update;
+        iconColor = Colors.blue;
+        break;
+      default:
+        iconData = Icons.notifications;
+        iconColor = Colors.grey;
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(iconData, color: iconColor, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    notification.title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    notification.body,
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    DateFormat(
+                      'dd MMM yyyy, HH:mm',
+                    ).format(notification.timestamp),
+                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -2031,6 +2063,10 @@ class _PMHomePageState extends State<PMHomePage> {
         setState(() {
           _isEditingNotes[task.uid!] = false;
         });
+
+        // Kirim notifikasi bukti diunggah
+        final taskNotificationService = TaskNotificationService();
+        await taskNotificationService.notifyUploadBukti(task, imageUrl);
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

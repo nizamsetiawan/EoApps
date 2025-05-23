@@ -1,227 +1,263 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'notification_service.dart';
 import '../models/task.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/timezone.dart' as tz;
-import 'package:timezone/data/latest.dart' as tz;
+import 'notification_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
+import 'package:workmanager/workmanager.dart';
 
 class TaskNotificationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final NotificationService _notificationService = NotificationService();
-  final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
-      FlutterLocalNotificationsPlugin();
-  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
 
-  // Send notification when a new task is created
   Future<void> notifyNewTask(Task task) async {
-    // Get PM and PIC FCM tokens
-    final pmToken = await getUserFCMToken(task.namaPM);
-    final picToken = await getUserFCMToken(task.pic);
-
-    // 1. Notifikasi pembuatan task
-    if (pmToken != null) {
-      await sendNotification(
-        token: pmToken,
-        title: 'Task Baru Dibuat',
-        body:
-            'Task "${task.namaTugas}" telah dibuat untuk tanggal ${task.tanggal.toString().split(' ')[0]}',
-      );
-    }
-
-    if (picToken != null) {
-      await sendNotification(
-        token: picToken,
-        title: 'Task Baru Ditugaskan',
-        body:
-            'Anda ditugaskan untuk task "${task.namaTugas}" pada tanggal ${task.tanggal.toString().split(' ')[0]}',
-      );
-    }
-
-    // 2. Notifikasi pengingat 2 menit sebelum task
-    final taskStartTime = _parseTaskTime(task.tanggal, task.jamMulai);
-    if (taskStartTime != null) {
-      // Schedule notification 2 minutes before task start
-      final notificationTime = taskStartTime.subtract(
-        const Duration(minutes: 2),
-      );
-
-      // Schedule notification for PM
-      if (pmToken != null) {
-        await _notificationService.scheduleTaskNotification(
-          taskId: '${task.uid}_pm',
-          title: 'Pengingat Task',
-          body: 'Task "${task.namaTugas}" akan dimulai dalam 2 menit',
-          scheduledTime: notificationTime,
-        );
-      }
-
-      // Schedule notification for PIC
-      if (picToken != null) {
-        await _notificationService.scheduleTaskNotification(
-          taskId: '${task.uid}_pic',
-          title: 'Pengingat Task',
-          body: 'Task "${task.namaTugas}" akan dimulai dalam 2 menit',
-          scheduledTime: notificationTime,
-        );
-      }
-    }
-  }
-
-  // Get user's FCM token from Firestore
-  Future<String?> getUserFCMToken(String email) async {
     try {
-      final userDoc =
-          await _firestore
-              .collection('users')
-              .where('email', isEqualTo: email)
-              .limit(1)
-              .get();
+      final taskStartTime = _parseTaskTime(task.tanggal, task.jamMulai);
+      if (taskStartTime != null) {
+        final now = DateTime.now();
+        final startTime = taskStartTime;
+        print('Waktu sekarang: $now');
+        print('Waktu mulai task: $startTime');
+        final taskId =
+            task.uid ?? DateTime.now().millisecondsSinceEpoch.toString();
 
-      if (userDoc.docs.isNotEmpty) {
-        return userDoc.docs.first.data()['fcmToken'];
+        // Format jam sekarang
+        final currentTimeFormatted = DateFormat('HH:mm').format(now);
+
+        // Send immediate notification for task creation
+        await _notificationService.showNotification(
+          id: taskId.hashCode + 1000000,
+          title: 'Task Baru Dibuat',
+          body:
+              'Task "${task.namaTugas}" dibuat pada $currentTimeFormatted, dijadwalkan mulai ${task.jamMulai} tanggal ${task.tanggal.toString().split(' ')[0]}',
+          payload: taskId,
+        );
+
+        // Save task creation notification to Firestore for both PM and PIC
+        await _saveNotificationToFirestore(
+          userIds: [task.namaPM, task.pic],
+          title: 'Task Baru Dibuat',
+          body:
+              'Task "${task.namaTugas}" dibuat pada $currentTimeFormatted, dijadwalkan mulai ${task.jamMulai} tanggal ${task.tanggal.toString().split(' ')[0]}',
+          type: 'task_created',
+          taskId: taskId,
+          taskName: task.namaTugas,
+        );
+
+        // Schedule reminders every 2 minutes before start time
+        // Jadwalkan 3 pengingat: 6 menit, 4 menit, dan 2 menit sebelum mulai
+        final reminderIntervals = [6, 4, 2]; // Menit sebelum task dimulai
+
+        for (var minutesBeforeStart in reminderIntervals) {
+          final reminderTime = startTime.subtract(
+            Duration(minutes: minutesBeforeStart),
+          );
+
+          if (!reminderTime.isAfter(now)) {
+            print(
+              'Melewati pengingat untuk waktu: $reminderTime (sudah lewat)',
+            );
+            continue;
+          }
+          print('Menjadwalkan pengingat untuk: $reminderTime');
+
+          // Gunakan satu ID untuk setiap waktu pengingat
+          final reminderId =
+              '${taskId}_reminder_${reminderTime.millisecondsSinceEpoch}'
+                  .hashCode;
+
+          // Hitung delay untuk Workmanager
+          final initialDelayReminder = reminderTime.difference(now);
+
+          // Jadwalkan task pengingat dengan Workmanager
+          await Workmanager().registerOneOffTask(
+            '${taskId}_reminder_${minutesBeforeStart}_${reminderTime.millisecondsSinceEpoch}',
+            'taskNotificationTask',
+            initialDelay: initialDelayReminder,
+            inputData: {
+              'id': reminderId,
+              'title': 'Pengingat Task',
+              'body':
+                  'Task "${task.namaTugas}" akan dimulai dalam $minutesBeforeStart menit.',
+              'payload': taskId,
+            },
+            // Optional: add constraints if needed, e.g., networkType
+            // constraints: Constraints(networkType: NetworkType.connected),
+          );
+
+          // Save reminder notification to Firestore for both PM and PIC
+          await _saveNotificationToFirestore(
+            userIds: [task.namaPM, task.pic],
+            title: 'Pengingat Task',
+            body:
+                'Task "${task.namaTugas}" akan dimulai dalam $minutesBeforeStart menit.',
+            type: 'reminder',
+            taskId: taskId,
+            taskName: task.namaTugas,
+          );
+        }
+
+        final startId = '${taskId}_start'.hashCode;
+
+        // Task Dimulai (scheduled only)
+        if (startTime.isAfter(now)) {
+          print('Menjadwalkan notifikasi mulai task untuk: $startTime');
+
+          // Hitung delay untuk Workmanager
+          final initialDelayStart = startTime.difference(now);
+
+          // Jadwalkan task task dimulai dengan Workmanager
+          await Workmanager().registerOneOffTask(
+            '${taskId}_start_${startTime.millisecondsSinceEpoch}',
+            'taskNotificationTask',
+            initialDelay: initialDelayStart,
+            inputData: {
+              'id': startId,
+              'title': 'Task Dimulai',
+              'body':
+                  'Task "${task.namaTugas}" DIMULAI SEKARANG! (${task.jamMulai})',
+              'payload': taskId,
+            },
+            // Optional: add constraints if needed
+            // constraints: Constraints(networkType: NetworkType.connected),
+          );
+
+          // Save final notification to Firestore for both PM and PIC
+          await _saveNotificationToFirestore(
+            userIds: [task.namaPM, task.pic],
+            title: 'Task Dimulai',
+            body:
+                'Task "${task.namaTugas}" DIMULAI SEKARANG! (${task.jamMulai})',
+            type: 'reminder',
+            taskId: taskId,
+            taskName: task.namaTugas,
+          );
+        }
       }
-      return null;
     } catch (e) {
-      return null;
+      rethrow;
     }
   }
 
-  // Send FCM notification
-  Future<void> sendNotification({
-    required String token,
+  Future<void> _saveNotificationToFirestore({
+    required List<String> userIds,
     required String title,
     required String body,
-    Map<String, Object>? extraData,
+    required String type,
+    String? taskId,
+    String? taskName,
   }) async {
     try {
-      final Map<String, Object> notificationData = {
-        'token': token,
+      final notificationData = {
+        'userIds': userIds,
         'title': title,
         'body': body,
+        'type': type,
+        'taskId': taskId,
+        'taskName': taskName,
         'timestamp': FieldValue.serverTimestamp(),
       };
-      if (extraData != null) {
-        notificationData.addAll(extraData);
-      }
       await _firestore.collection('notifications').add(notificationData);
     } catch (e) {
-      // Handle error silently
+      rethrow;
     }
   }
 
-  // Parse task time from date and time string
   DateTime? _parseTaskTime(DateTime date, String timeStr) {
     try {
       final timeParts = timeStr.split(':');
-      if (timeParts.length != 2) return null;
-
+      if (timeParts.length != 2) {
+        return null;
+      }
       final hour = int.parse(timeParts[0]);
       final minute = int.parse(timeParts[1]);
-
+      if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+        return null;
+      }
       return DateTime(date.year, date.month, date.day, hour, minute);
     } catch (e) {
       return null;
     }
   }
 
-  Future<void> initialize() async {
-    // Initialize timezone
-    tz.initializeTimeZones();
-
-    // Request permission for notifications
-    await _firebaseMessaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
+  // Notifikasi perubahan status
+  Future<void> notifyStatusChanged(Task task, String newStatus) async {
+    final notificationId =
+        '${task.uid}_status_${DateTime.now().millisecondsSinceEpoch}'.hashCode;
+    await _notificationService.showNotification(
+      id: notificationId,
+      title: 'Status Task Berubah',
+      body: 'Status task "${task.namaTugas}" berubah menjadi "$newStatus"',
+      payload: task.uid ?? '',
     );
-
-    // Initialize local notifications
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-
-    const DarwinInitializationSettings initializationSettingsIOS =
-        DarwinInitializationSettings(
-          requestAlertPermission: true,
-          requestBadgePermission: true,
-          requestSoundPermission: true,
-        );
-
-    const InitializationSettings initializationSettings =
-        InitializationSettings(
-          android: initializationSettingsAndroid,
-          iOS: initializationSettingsIOS,
-        );
-
-    await _flutterLocalNotificationsPlugin.initialize(
-      initializationSettings,
-      onDidReceiveNotificationResponse: (NotificationResponse response) {
-        // Handle notification tap
-      },
+    await _saveNotificationToFirestore(
+      userIds: [task.namaPM, task.pic],
+      title: 'Status Task Berubah',
+      body: 'Status task "${task.namaTugas}" berubah menjadi "$newStatus"',
+      type: 'status_changed',
+      taskId: task.uid,
+      taskName: task.namaTugas,
     );
-
-    // Handle foreground messages
-    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
   }
 
-  void _handleForegroundMessage(RemoteMessage message) {
-    RemoteNotification? notification = message.notification;
-    AndroidNotification? android = message.notification?.android;
-
-    if (notification != null && android != null) {
-      _flutterLocalNotificationsPlugin.show(
-        notification.hashCode,
-        notification.title,
-        notification.body,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            'task_notification_channel',
-            'Task Notifications',
-            channelDescription: 'Notifications for task updates',
-            importance: Importance.max,
-            priority: Priority.high,
-            icon: android.smallIcon,
-          ),
-          iOS: const DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-          ),
-        ),
-      );
-    }
+  // Notifikasi tambah keterangan
+  Future<void> notifyAddKeterangan(Task task, String keterangan) async {
+    final notificationId =
+        '${task.uid}_keterangan_${DateTime.now().millisecondsSinceEpoch}'
+            .hashCode;
+    await _notificationService.showNotification(
+      id: notificationId,
+      title: 'Keterangan Ditambahkan',
+      body: 'Keterangan pada task "${task.namaTugas}": $keterangan',
+      payload: task.uid ?? '',
+    );
+    await _saveNotificationToFirestore(
+      userIds: [task.namaPM, task.pic],
+      title: 'Keterangan Ditambahkan',
+      body: 'Keterangan pada task "${task.namaTugas}": $keterangan',
+      type: 'add_keterangan',
+      taskId: task.uid,
+      taskName: task.namaTugas,
+    );
   }
 
-  Future<void> scheduleTaskNotification({
-    required String title,
-    required String body,
-    required DateTime scheduledTime,
-    required String taskId,
-  }) async {
-    await _flutterLocalNotificationsPlugin.zonedSchedule(
-      taskId.hashCode,
-      title,
-      body,
-      tz.TZDateTime.from(scheduledTime, tz.local),
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          'task_notification_channel',
-          'Task Notifications',
-          channelDescription: 'Notifications for task updates',
-          importance: Importance.max,
-          priority: Priority.high,
-        ),
-        iOS: const DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+  // Notifikasi upload bukti
+  Future<void> notifyUploadBukti(Task task, String buktiUrl) async {
+    final notificationId =
+        '${task.uid}_bukti_${DateTime.now().millisecondsSinceEpoch}'.hashCode;
+    print('Mengirim notifikasi bukti diunggah untuk task: ${task.namaTugas}');
+    await _notificationService.showNotification(
+      id: notificationId,
+      title: 'Bukti Diunggah',
+      body: 'Bukti untuk task "${task.namaTugas}" telah berhasil diunggah.',
+      payload: task.uid ?? '',
+    );
+    await _saveNotificationToFirestore(
+      userIds: [task.namaPM, task.pic],
+      title: 'Bukti Diunggah',
+      body: 'Bukti untuk task "${task.namaTugas}" telah berhasil diunggah.',
+      type: 'upload_bukti',
+      taskId: task.uid,
+      taskName: task.namaTugas,
+    );
+    print('Notifikasi bukti diunggah berhasil disimpan ke Firestore');
+  }
+
+  // Notifikasi task selesai
+  Future<void> notifyTaskSelesai(Task task) async {
+    final notificationId =
+        '${task.uid}_selesai_${DateTime.now().millisecondsSinceEpoch}'.hashCode;
+    await _notificationService.showNotification(
+      id: notificationId,
+      title: 'Task Selesai',
+      body: 'Task "${task.namaTugas}" telah selesai.',
+      payload: task.uid ?? '',
+    );
+    await _saveNotificationToFirestore(
+      userIds: [task.namaPM, task.pic],
+      title: 'Task Selesai',
+      body: 'Task "${task.namaTugas}" telah selesai.',
+      type: 'task_selesai',
+      taskId: task.uid,
+      taskName: task.namaTugas,
     );
   }
 }
-
-// This needs to be a top-level function
-@pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {}

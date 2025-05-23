@@ -6,6 +6,7 @@ import 'services/notification_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:workmanager/workmanager.dart';
 
 // Handle background messages
 @pragma('vm:entry-point')
@@ -13,15 +14,66 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 }
 
+// Ini adalah fungsi top-level yang akan dijalankan oleh Workmanager
+// @pragma('vm:entry-point') diperlukan untuk Flutter 3.1+ atau jika aplikasi diobfuscate
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((taskName, inputData) async {
+    // Inisialisasi Firebase dan flutter_local_notifications di dalam isolate background
+    WidgetsFlutterBinding.ensureInitialized();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+
+    // Inisialisasi NotificationService di sini
+    final NotificationService notificationService = NotificationService();
+    await notificationService
+        .initialize(); // Pastikan ada metode initialize di NotificationService
+
+    print("Native called background task: $taskName");
+
+    // Handle specific tasks based on taskName and inputData
+    switch (taskName) {
+      case "taskNotificationTask":
+        // Contoh: Mendapatkan data notifikasi dari inputData
+        final int? id = inputData?['id'] as int?;
+        final String? title = inputData?['title'] as String?;
+        final String? body = inputData?['body'] as String?;
+        final String? payload = inputData?['payload'] as String?;
+
+        if (id != null && title != null && body != null) {
+          print('Memicu notifikasi background: $title - $body');
+          await notificationService.showNotification(
+            id: id,
+            title: title,
+            body: body,
+            payload: payload ?? '',
+          );
+        }
+        break;
+      // Tambahkan case lain jika ada jenis task background lain
+    }
+
+    // Return true jika task berhasil
+    return Future.value(true);
+  });
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Set background message handler
+  // Set background message handler (untuk FCM, tetap dipertahankan)
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  // Initialize notification service
+  // Inisialisasi Workmanager
+  Workmanager().initialize(
+    callbackDispatcher, // Fungsi top-level yang akan dijalankan
+    isInDebugMode: true, // Set true untuk debugging
+  );
+
+  // Initialize notification service (untuk notifikasi foreground/instan)
   final notificationService = NotificationService();
   await notificationService.initialize();
 
@@ -46,7 +98,7 @@ void main() async {
     }
   });
 
-  // Listen for foreground messages
+  // Listen for foreground messages (untuk FCM)
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {});
 
   runApp(const TaskSchedulingApp());

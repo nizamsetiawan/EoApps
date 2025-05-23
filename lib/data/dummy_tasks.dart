@@ -25,6 +25,7 @@ Future<String?> addTask(Task task) async {
       'pic': task.pic,
       'status': task.status,
     });
+
     return docRef.id;
   } catch (e) {
     return null;
@@ -82,24 +83,10 @@ Future<void> setStatus(String selectedTask, String newStatus) async {
             .get();
     if (taskSnapshot.exists) {
       final updatedTask = Task.fromFirestore(taskSnapshot);
-      await taskNotificationService.sendNotification(
-        token:
-            (await taskNotificationService.getUserFCMToken(updatedTask.pic)) ??
-            '',
-        title: 'Status Task Diubah',
-        body:
-            'Status task \'${updatedTask.namaTugas}\' diubah menjadi \'$newStatus\'.',
-      );
-      await taskNotificationService.sendNotification(
-        token:
-            (await taskNotificationService.getUserFCMToken(
-              updatedTask.namaPM,
-            )) ??
-            '',
-        title: 'Status Task Diubah',
-        body:
-            'Status task \'${updatedTask.namaTugas}\' diubah menjadi \'$newStatus\'.',
-      );
+      await taskNotificationService.notifyStatusChanged(updatedTask, newStatus);
+      if (newStatus == 'done') {
+        await taskNotificationService.notifyTaskSelesai(updatedTask);
+      }
     }
   } catch (e) {
     rethrow;
@@ -146,6 +133,13 @@ Future<void> updateTaskBukti(
       'bukti': imageUrl,
       'keterangan': keterangan,
     });
+    final taskNotificationService = TaskNotificationService();
+    final taskSnapshot =
+        await FirebaseFirestore.instance.collection('tasks').doc(taskId).get();
+    if (taskSnapshot.exists) {
+      final updatedTask = Task.fromFirestore(taskSnapshot);
+      await taskNotificationService.notifyUploadBukti(updatedTask, imageUrl);
+    }
   } catch (e) {
     rethrow;
   }
@@ -156,6 +150,16 @@ Future<void> updateTaskKeterangan(String taskId, String keterangan) async {
     await FirebaseFirestore.instance.collection('tasks').doc(taskId).update({
       'keterangan': keterangan,
     });
+    final taskNotificationService = TaskNotificationService();
+    final taskSnapshot =
+        await FirebaseFirestore.instance.collection('tasks').doc(taskId).get();
+    if (taskSnapshot.exists) {
+      final updatedTask = Task.fromFirestore(taskSnapshot);
+      await taskNotificationService.notifyAddKeterangan(
+        updatedTask,
+        keterangan,
+      );
+    }
   } catch (e) {
     rethrow;
   }

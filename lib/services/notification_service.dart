@@ -1,4 +1,3 @@
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
@@ -12,11 +11,10 @@ final StreamController<String?> selectNotificationStream =
     StreamController<String?>.broadcast();
 
 class NotificationService {
-  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
-
   Future<void> initialize() async {
     try {
       tz.initializeTimeZones();
+      tz.setLocalLocation(tz.getLocation('Asia/Jakarta'));
       await requestPermissions();
 
       const AndroidInitializationSettings initializationSettingsAndroid =
@@ -57,36 +55,16 @@ class NotificationService {
             'task_notification_channel',
             'Task Notifications',
             description: 'Notifications for task updates',
-            importance: Importance.high,
+            importance: Importance.max,
             enableVibration: true,
             playSound: true,
             showBadge: true,
           ),
         );
       }
-
-      FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
     } catch (e) {
-      // Handle initialization error silently
+      rethrow;
     }
-  }
-
-  Future<bool> _isAndroidPermissionGranted() async {
-    return await flutterLocalNotificationsPlugin
-            .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin
-            >()
-            ?.areNotificationsEnabled() ??
-        false;
-  }
-
-  Future<bool> _requestAndroidNotificationsPermission() async {
-    return await flutterLocalNotificationsPlugin
-            .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin
-            >()
-            ?.requestNotificationsPermission() ??
-        false;
   }
 
   Future<bool?> requestPermissions() async {
@@ -102,9 +80,20 @@ class NotificationService {
         sound: true,
       );
     } else if (defaultTargetPlatform == TargetPlatform.android) {
-      final notificationEnabled = await _isAndroidPermissionGranted();
+      final notificationEnabled =
+          await flutterLocalNotificationsPlugin
+              .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin
+              >()
+              ?.areNotificationsEnabled() ??
+          false;
       if (!notificationEnabled) {
-        return await _requestAndroidNotificationsPermission();
+        return await flutterLocalNotificationsPlugin
+                .resolvePlatformSpecificImplementation<
+                  AndroidFlutterLocalNotificationsPlugin
+                >()
+                ?.requestNotificationsPermission() ??
+            false;
       }
       return notificationEnabled;
     } else {
@@ -120,29 +109,35 @@ class NotificationService {
     String channelId = "task_notification_channel",
     String channelName = "Task Notifications",
   }) async {
-    final androidPlatformChannelSpecifics = AndroidNotificationDetails(
-      channelId,
-      channelName,
-      importance: Importance.high,
-      priority: Priority.high,
-      enableVibration: true,
-      playSound: true,
-      fullScreenIntent: true,
-      styleInformation: BigTextStyleInformation(body),
-    );
-
-    final iOSPlatformChannelSpecifics = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-
-    final notificationDetails = NotificationDetails(
-      android: androidPlatformChannelSpecifics,
-      iOS: iOSPlatformChannelSpecifics,
-    );
-
     try {
+      final androidPlatformChannelSpecifics = AndroidNotificationDetails(
+        channelId,
+        channelName,
+        importance: Importance.max,
+        priority: Priority.high,
+        enableVibration: true,
+        playSound: true,
+        fullScreenIntent: true,
+        styleInformation: BigTextStyleInformation(body),
+        category: AndroidNotificationCategory.alarm,
+        visibility: NotificationVisibility.public,
+        showWhen: true,
+        autoCancel: true,
+        ongoing: false,
+      );
+
+      final iOSPlatformChannelSpecifics = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        interruptionLevel: InterruptionLevel.timeSensitive,
+      );
+
+      final notificationDetails = NotificationDetails(
+        android: androidPlatformChannelSpecifics,
+        iOS: iOSPlatformChannelSpecifics,
+      );
+
       await flutterLocalNotificationsPlugin.show(
         id,
         title,
@@ -151,37 +146,7 @@ class NotificationService {
         payload: payload,
       );
     } catch (e) {
-      // Handle notification error silently
-    }
-  }
-
-  void _handleForegroundMessage(RemoteMessage message) {
-    RemoteNotification? notification = message.notification;
-    AndroidNotification? android = message.notification?.android;
-
-    if (notification != null) {
-      flutterLocalNotificationsPlugin.show(
-        notification.hashCode,
-        notification.title,
-        notification.body,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            'task_notification_channel',
-            'Task Notifications',
-            channelDescription: 'Notifications for task updates',
-            importance: Importance.max,
-            priority: Priority.high,
-            icon: android?.smallIcon ?? '@mipmap/ic_launcher',
-            enableVibration: true,
-            playSound: true,
-          ),
-          iOS: const DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-          ),
-        ),
-      );
+      rethrow;
     }
   }
 
@@ -189,124 +154,75 @@ class NotificationService {
     required String title,
     required String body,
     required DateTime scheduledTime,
-    required String taskId,
+    required int notificationId,
   }) async {
     try {
-      final now = DateTime.now();
-      final scheduledTimeZone = tz.TZDateTime.from(
-        scheduledTime,
-        tz.getLocation('Asia/Jakarta'),
+      final jakarta = tz.getLocation('Asia/Jakarta');
+      final scheduledTimeZone = tz.TZDateTime.from(scheduledTime, jakarta);
+      final now = tz.TZDateTime.now(jakarta);
+      print('Mencoba menjadwalkan notifikasi untuk: $scheduledTimeZone');
+      print('Waktu sekarang: $now');
+      if (scheduledTimeZone.isBefore(now)) {
+        print('Waktu sudah lewat, tidak menjadwalkan notifikasi');
+        return;
+      }
+      final androidPlatformChannelSpecifics = AndroidNotificationDetails(
+        'task_notification_channel',
+        'Task Notifications',
+        channelDescription: 'Notifications for task updates',
+        importance: Importance.max,
+        priority: Priority.high,
+        styleInformation: BigTextStyleInformation(
+          body,
+          htmlFormatBigText: true,
+          contentTitle: title,
+          summaryText: title,
+        ),
+        fullScreenIntent: true,
+        category: AndroidNotificationCategory.alarm,
+        visibility: NotificationVisibility.public,
+        enableVibration: true,
+        playSound: true,
+        showWhen: true,
+        autoCancel: true,
+        ongoing: false,
       );
+      final iOSPlatformChannelSpecifics = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        interruptionLevel: InterruptionLevel.timeSensitive,
+      );
+      final notificationDetails = NotificationDetails(
+        android: androidPlatformChannelSpecifics,
+        iOS: iOSPlatformChannelSpecifics,
+      );
+      try {
+        await flutterLocalNotificationsPlugin.cancel(notificationId);
+      } catch (e) {
+        print('Tidak ada notifikasi lama untuk dibatalkan');
+      }
 
-      final finalScheduledTime =
-          scheduledTimeZone.isBefore(
-                tz.TZDateTime.now(tz.getLocation('Asia/Jakarta')),
-              )
-              ? tz.TZDateTime.now(
-                tz.getLocation('Asia/Jakarta'),
-              ).add(Duration(minutes: 1))
-              : scheduledTimeZone;
+      final scheduledTimeMillis = scheduledTimeZone.millisecondsSinceEpoch;
+      final nowMillis = now.millisecondsSinceEpoch;
 
-      var currentTime = tz.TZDateTime.now(tz.getLocation('Asia/Jakarta'));
-      var notificationCount = 1;
-
-      while (currentTime.isBefore(finalScheduledTime)) {
-        final minutesLeft =
-            finalScheduledTime.difference(currentTime).inMinutes;
-        String timeMessage;
-        if (minutesLeft >= 60) {
-          final hours = minutesLeft ~/ 60;
-          final minutes = minutesLeft % 60;
-          timeMessage =
-              hours > 0
-                  ? '$hours jam ${minutes > 0 ? '$minutes menit' : ''} lagi'
-                  : '$minutes menit lagi';
-        } else {
-          timeMessage = '$minutesLeft menit lagi';
-        }
-
-        await flutterLocalNotificationsPlugin.zonedSchedule(
-          '${taskId}_reminder_$notificationCount'.hashCode,
-          'Pengingat Tugas',
-          'Tugas "$title" akan dimulai dalam $timeMessage',
-          currentTime,
-          NotificationDetails(
-            android: AndroidNotificationDetails(
-              'task_notification_channel',
-              'Notifikasi Tugas',
-              channelDescription: 'Notifikasi untuk pembaruan tugas',
-              importance: Importance.max,
-              priority: Priority.max,
-              styleInformation: BigTextStyleInformation(
-                'Tugas "$title" akan dimulai dalam $timeMessage',
-                htmlFormatBigText: true,
-                contentTitle: 'Pengingat Tugas',
-                summaryText: 'Pengingat Tugas',
-              ),
-              fullScreenIntent: true,
-              category: AndroidNotificationCategory.alarm,
-              visibility: NotificationVisibility.public,
-              enableVibration: true,
-              playSound: true,
-              showWhen: true,
-              autoCancel: false,
-              ongoing: true,
-            ),
-            iOS: const DarwinNotificationDetails(
-              presentAlert: true,
-              presentBadge: true,
-              presentSound: true,
-              interruptionLevel: InterruptionLevel.timeSensitive,
-            ),
-          ),
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        );
-
-        currentTime = currentTime.add(const Duration(minutes: 2));
-        notificationCount++;
+      if (scheduledTimeMillis <= nowMillis) {
+        print('Waktu jadwal tidak valid, tidak menjadwalkan notifikasi');
+        return;
       }
 
       await flutterLocalNotificationsPlugin.zonedSchedule(
-        taskId.hashCode,
-        'Tugas Dimulai',
-        'Tugas "$title" dimulai sekarang!',
-        finalScheduledTime,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            'task_notification_channel',
-            'Notifikasi Tugas',
-            channelDescription: 'Notifikasi untuk pembaruan tugas',
-            importance: Importance.max,
-            priority: Priority.max,
-            styleInformation: BigTextStyleInformation(
-              'Tugas "$title" dimulai sekarang!',
-              htmlFormatBigText: true,
-              contentTitle: 'Tugas Dimulai',
-              summaryText: 'Tugas Dimulai',
-            ),
-            fullScreenIntent: true,
-            category: AndroidNotificationCategory.alarm,
-            visibility: NotificationVisibility.public,
-            enableVibration: true,
-            playSound: true,
-            showWhen: true,
-            autoCancel: false,
-            ongoing: true,
-          ),
-          iOS: const DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-            interruptionLevel: InterruptionLevel.timeSensitive,
-          ),
-        ),
+        notificationId,
+        title,
+        body,
+        scheduledTimeZone,
+        notificationDetails,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       );
+      print('Berhasil menjadwalkan notifikasi untuk: $scheduledTimeZone');
     } catch (e) {
-      // Handle scheduling error silently
+      print('Error saat menjadwalkan notifikasi: $e');
+      rethrow;
     }
   }
 }
-
-@pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {}

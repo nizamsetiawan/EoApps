@@ -41,6 +41,8 @@ class _PMHomePageState extends State<PMHomePage> {
   bool _isDateRangeMode = false;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   User? _currentUser;
+  String _selectedNotificationFilter =
+      'Semua'; // State variable for notification filter
 
   @override
   void initState() {
@@ -612,7 +614,33 @@ class _PMHomePageState extends State<PMHomePage> {
           tasks.sort((b, a) => a.jamMulai.compareTo(b.jamMulai));
 
           if (tasks.isEmpty) {
-            return const Center(child: Text("Waw kamu bisa santai hari ini"));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+              SizedBox.fromSize(
+              size:
+              const Size.fromHeight(150),
+              ),
+                  const Text(
+                    "Waw kamu bisa santai hari ini",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color.fromARGB(255, 33, 83, 36),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Tanggal: ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}",
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            );
           }
 
           return ListView(
@@ -1889,39 +1917,207 @@ class _PMHomePageState extends State<PMHomePage> {
 
   //====================================== Notifications Page Placeholder ====
   Widget _buildNotificationsPage() {
-    return StreamBuilder<QuerySnapshot>(
-      stream:
-          FirebaseFirestore.instance
-              .collection('notifications')
-              .where('userId')
-              .orderBy('timestamp', descending: true)
-              .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return const Center(child: Text('Terjadi kesalahan'));
-        }
+    return Column(
+      children: [
+        // Filter dan Hapus Semua Button
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              // Filter Dropdown
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: DropdownButton<String>(
+                    value: _selectedNotificationFilter,
+                    isExpanded: true,
+                    underline: const SizedBox(),
+                    items:
+                        [
+                          'Semua',
+                          'Task Baru',
+                          'Pengingat',
+                          'Status Berubah',
+                          'Bukti Diunggah',
+                          'Task Selesai',
+                        ].map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        setState(() {
+                          _selectedNotificationFilter = newValue;
+                        });
+                      }
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Hapus Semua Button
+              ElevatedButton.icon(
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: const Text('Hapus Semua Notifikasi'),
+                        content: const Text(
+                          'Apakah Anda yakin ingin menghapus semua notifikasi?',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Batal'),
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              try {
+                                final batch =
+                                    FirebaseFirestore.instance.batch();
+                                final notifications =
+                                    await FirebaseFirestore.instance
+                                        .collection('notifications')
+                                        .get();
 
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+                                for (var doc in notifications.docs) {
+                                  batch.delete(doc.reference);
+                                }
 
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(
-            child: Text('Belum ada notifikasi', style: TextStyle(fontSize: 16)),
-          );
-        }
+                                await batch.commit();
+                                if (mounted) {
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Semua notifikasi berhasil dihapus',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Error: $e'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            child: const Text('Hapus'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+                icon: const Icon(Icons.delete_sweep),
+                label: const Text('Hapus Semua'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Notifications List
+        Expanded(
+          child: StreamBuilder<QuerySnapshot>(
+            stream:
+                FirebaseFirestore.instance
+                    .collection('notifications')
+                    .where('userIds')
+                    .orderBy('timestamp', descending: true)
+                    .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return const Center(child: Text('Terjadi kesalahan'));
+              }
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: snapshot.data!.docs.length,
-          itemBuilder: (context, index) {
-            final notification = NotificationModel.fromFirestore(
-              snapshot.data!.docs[index],
-            );
-            return _buildNotificationCard(notification);
-          },
-        );
-      },
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                print('Snapshot hasData: ${snapshot.hasData}');
+                print('Snapshot docs empty: ${snapshot.data?.docs.isEmpty}');
+                if (snapshot.hasError) {
+                  print('Snapshot error: ${snapshot.error}');
+                }
+                return const Center(
+                  child: Text(
+                    'Belum ada notifikasi',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                );
+              }
+
+              // Filter notifications based on selected filter
+              var filteredDocs =
+                  snapshot.data!.docs.where((doc) {
+                    // Print raw data of the document before filtering
+                    print('Raw notification doc data: ${doc.data()}');
+                    print('Selected filter: $_selectedNotificationFilter');
+
+                    final data = doc.data() as Map<String, dynamic>;
+                    final type = data['type'] as String? ?? '';
+
+                    // Log the extracted type for debugging
+                    print('Notification type (extracted): $type');
+
+                    if (_selectedNotificationFilter == 'Semua') return true;
+
+                    switch (_selectedNotificationFilter) {
+                      case 'Task Baru':
+                        return type == 'task_created';
+                      case 'Pengingat':
+                        return type == 'reminder';
+                      case 'Status Berubah':
+                        return type == 'status_changed';
+                      case 'Bukti Diunggah':
+                        return type == 'upload_bukti';
+                      case 'Task Selesai':
+                        return type == 'task_selesai';
+                      default:
+                        return true;
+                    }
+                  }).toList();
+
+              if (filteredDocs.isEmpty) {
+                print('Filtered docs count: ${filteredDocs.length}');
+                return Center(
+                  child: Text(
+                    'Tidak ada notifikasi untuk filter: $_selectedNotificationFilter',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: filteredDocs.length,
+                itemBuilder: (context, index) {
+                  final notification = NotificationModel.fromFirestore(
+                    filteredDocs[index],
+                  );
+                  return _buildNotificationCard(notification);
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -1942,56 +2138,94 @@ class _PMHomePageState extends State<PMHomePage> {
         iconData = Icons.update;
         iconColor = Colors.blue;
         break;
+      case 'upload_bukti':
+        iconData = Icons.upload_file;
+        iconColor = Colors.purple;
+        break;
+      case 'task_selesai':
+        iconData = Icons.check_circle;
+        iconColor = Colors.green;
+        break;
       default:
         iconData = Icons.notifications;
         iconColor = Colors.grey;
     }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+    return Dismissible(
+      key: Key(notification.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        color: Colors.red,
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      onDismissed: (direction) async {
+        try {
+          await FirebaseFirestore.instance
+              .collection('notifications')
+              .doc(notification.id)
+              .delete();
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Notifikasi berhasil dihapus'),backgroundColor: Colors.red),
+            );
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+            );
+          }
+        }
+      },
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 16),
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(iconData, color: iconColor, size: 24),
               ),
-              child: Icon(iconData, color: iconColor, size: 24),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    notification.title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      notification.title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    notification.body,
-                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    DateFormat(
-                      'dd MMM yyyy, HH:mm',
-                    ).format(notification.timestamp),
-                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Text(
+                      notification.body,
+                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      DateFormat(
+                        'dd MMM yyyy, HH:mm',
+                      ).format(notification.timestamp),
+                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -7,54 +7,50 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:workmanager/workmanager.dart';
+import 'services/task_notification_service.dart';
 
-// Handle background messages
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 }
 
-// Ini adalah fungsi top-level yang akan dijalankan oleh Workmanager
-// @pragma('vm:entry-point') diperlukan untuk Flutter 3.1+ atau jika aplikasi diobfuscate
+
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((taskName, inputData) async {
-    // Inisialisasi Firebase dan flutter_local_notifications di dalam isolate background
     WidgetsFlutterBinding.ensureInitialized();
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
 
-    // Inisialisasi NotificationService di sini
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
+
     final NotificationService notificationService = NotificationService();
-    await notificationService
-        .initialize(); // Pastikan ada metode initialize di NotificationService
+    // Initialize NotificationService if not already initialized
+    // Perlu cara untuk mengecek apakah sudah diinisialisasi atau memanggil initialize dengan aman
+    // Untuk sederhana, panggil initialize saja, pastikan implementasinya aman dipanggil berulang
+    await notificationService.initialize();
 
     print("Native called background task: $taskName");
 
     // Handle specific tasks based on taskName and inputData
     switch (taskName) {
       case "taskNotificationTask":
-        // Contoh: Mendapatkan data notifikasi dari inputData
-        final int? id = inputData?['id'] as int?;
-        final String? title = inputData?['title'] as String?;
-        final String? body = inputData?['body'] as String?;
-        final String? payload = inputData?['payload'] as String?;
-
-        if (id != null && title != null && body != null) {
-          print('Memicu notifikasi background: $title - $body');
-          await notificationService.showNotification(
-            id: id,
-            title: title,
-            body: body,
-            payload: payload ?? '',
+        // Panggil method di TaskNotificationService untuk memproses notifikasi terjadwal
+        final taskNotificationService = TaskNotificationService();
+        if (inputData != null) {
+          print(
+            'Workmanager received taskNotificationTask with inputData: $inputData',
           );
+          // Tunggu hingga proses notifikasi (tampil dan simpan ke Firestore) selesai
+          await taskNotificationService.processScheduledNotification(inputData);
         }
         break;
       // Tambahkan case lain jika ada jenis task background lain
     }
 
-    // Return true jika task berhasil
+    // Return true jika task berhasil (setelah semua async operation selesai)
     return Future.value(true);
   });
 }
@@ -70,7 +66,7 @@ void main() async {
   // Inisialisasi Workmanager
   Workmanager().initialize(
     callbackDispatcher, // Fungsi top-level yang akan dijalankan
-    isInDebugMode: true, // Set true untuk debugging
+    isInDebugMode: false, // Set false untuk menonaktifkan debug notifications
   );
 
   // Initialize notification service (untuk notifikasi foreground/instan)

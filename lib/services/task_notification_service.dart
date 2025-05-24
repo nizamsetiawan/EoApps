@@ -14,15 +14,11 @@ class TaskNotificationService {
       if (taskStartTime != null) {
         final now = DateTime.now();
         final startTime = taskStartTime;
-        print('Waktu sekarang: $now');
-        print('Waktu mulai task: $startTime');
         final taskId =
             task.uid ?? DateTime.now().millisecondsSinceEpoch.toString();
 
-        // Format jam sekarang
         final currentTimeFormatted = DateFormat('HH:mm').format(now);
 
-        // Send immediate notification for task creation
         await _notificationService.showNotification(
           id: taskId.hashCode + 1000000,
           title: 'Task Baru Dibuat',
@@ -31,7 +27,6 @@ class TaskNotificationService {
           payload: taskId,
         );
 
-        // Save task creation notification to Firestore for both PM and PIC
         await _saveNotificationToFirestore(
           userIds: [task.namaPM, task.pic],
           title: 'Task Baru Dibuat',
@@ -42,9 +37,7 @@ class TaskNotificationService {
           taskName: task.namaTugas,
         );
 
-        // Schedule reminders every 2 minutes before start time
-        // Jadwalkan 3 pengingat: 6 menit, 4 menit, dan 2 menit sebelum mulai
-        final reminderIntervals = [6, 4, 2]; // Menit sebelum task dimulai
+        final reminderIntervals = [6, 4, 2];
 
         for (var minutesBeforeStart in reminderIntervals) {
           final reminderTime = startTime.subtract(
@@ -52,22 +45,15 @@ class TaskNotificationService {
           );
 
           if (!reminderTime.isAfter(now)) {
-            print(
-              'Melewati pengingat untuk waktu: $reminderTime (sudah lewat)',
-            );
             continue;
           }
-          print('Menjadwalkan pengingat untuk: $reminderTime');
 
-          // Gunakan satu ID untuk setiap waktu pengingat
           final reminderId =
               '${taskId}_reminder_${reminderTime.millisecondsSinceEpoch}'
                   .hashCode;
 
-          // Hitung delay untuk Workmanager
           final initialDelayReminder = reminderTime.difference(now);
 
-          // Jadwalkan task pengingat dengan Workmanager
           await Workmanager().registerOneOffTask(
             '${taskId}_reminder_${minutesBeforeStart}_${reminderTime.millisecondsSinceEpoch}',
             'taskNotificationTask',
@@ -83,23 +69,14 @@ class TaskNotificationService {
               'taskId': taskId,
               'taskName': task.namaTugas,
             },
-            // Optional: add constraints if needed, e.g., networkType
-            // constraints: Constraints(networkType: NetworkType.connected),
           );
-
-          // Save reminder notification to Firestore for both PM and PIC
         }
 
         final startId = '${taskId}_start'.hashCode;
 
-        // Task Dimulai (scheduled only)
         if (startTime.isAfter(now)) {
-          print('Menjadwalkan notifikasi mulai task untuk: $startTime');
-
-          // Hitung delay untuk Workmanager
           final initialDelayStart = startTime.difference(now);
 
-          // Jadwalkan task task dimulai dengan Workmanager
           await Workmanager().registerOneOffTask(
             '${taskId}_start_${startTime.millisecondsSinceEpoch}',
             'taskNotificationTask',
@@ -115,11 +92,7 @@ class TaskNotificationService {
               'taskId': taskId,
               'taskName': task.namaTugas,
             },
-            // Optional: add constraints if needed
-            // constraints: Constraints(networkType: NetworkType.connected),
           );
-
-          // Notifikasi task dimulai akan disimpan ke Firestore saat workmanager dijalankan
         }
       }
     } catch (e) {
@@ -136,10 +109,6 @@ class TaskNotificationService {
     String? taskName,
   }) async {
     try {
-      print('Attempting to save notification to Firestore...');
-      print('User IDs being saved: $userIds');
-      print('Notification type being saved: $type');
-      print('Notification title being saved: $title');
       final notificationData = {
         'userIds': userIds,
         'title': title,
@@ -151,7 +120,6 @@ class TaskNotificationService {
       };
       await _firestore.collection('notifications').add(notificationData);
     } catch (e) {
-      print('Error saving notification to Firestore: $e');
       rethrow;
     }
   }
@@ -173,7 +141,6 @@ class TaskNotificationService {
     }
   }
 
-  // Notifikasi perubahan status
   Future<void> notifyStatusChanged(Task task, String newStatus) async {
     final notificationId =
         '${task.uid}_status_${DateTime.now().millisecondsSinceEpoch}'.hashCode;
@@ -193,7 +160,6 @@ class TaskNotificationService {
     );
   }
 
-  // Notifikasi tambah keterangan
   Future<void> notifyAddKeterangan(Task task, String keterangan) async {
     final notificationId =
         '${task.uid}_keterangan_${DateTime.now().millisecondsSinceEpoch}'
@@ -214,11 +180,9 @@ class TaskNotificationService {
     );
   }
 
-  // Notifikasi upload bukti
   Future<void> notifyUploadBukti(Task task, String buktiUrl) async {
     final notificationId =
         '${task.uid}_bukti_${DateTime.now().millisecondsSinceEpoch}'.hashCode;
-    print('Mengirim notifikasi bukti diunggah untuk task: ${task.namaTugas}');
     await _notificationService.showNotification(
       id: notificationId,
       title: 'Bukti Diunggah',
@@ -233,10 +197,8 @@ class TaskNotificationService {
       taskId: task.uid,
       taskName: task.namaTugas,
     );
-    print('Notifikasi bukti diunggah berhasil disimpan ke Firestore');
   }
 
-  // Notifikasi task selesai
   Future<void> notifyTaskSelesai(Task task) async {
     final notificationId =
         '${task.uid}_selesai_${DateTime.now().millisecondsSinceEpoch}'.hashCode;
@@ -256,13 +218,10 @@ class TaskNotificationService {
     );
   }
 
-  // Method yang dipanggil dari Workmanager untuk memproses dan menyimpan notifikasi terjadwal
   Future<void> processScheduledNotification(
     Map<String, dynamic> notificationData,
   ) async {
     try {
-      print('Processing scheduled notification with data: $notificationData');
-
       final int? id = notificationData['id'] as int?;
       final String? title = notificationData['title'] as String?;
       final String? body = notificationData['body'] as String?;
@@ -280,10 +239,6 @@ class TaskNotificationService {
           body != null &&
           userIds != null &&
           type != null) {
-        // Tampilkan notifikasi di layar
-        print(
-          'Attempting to show notification: ID=$id, Title=$title, Body=$body, Payload=$payload',
-        );
         await _notificationService.showNotification(
           id: id,
           title: title,
@@ -291,9 +246,6 @@ class TaskNotificationService {
           payload: payload ?? '',
         );
 
-        print('showNotification successful for ID: $id');
-
-        // Simpan notifikasi ke Firestore
         await _saveNotificationToFirestore(
           userIds: userIds,
           title: title,
@@ -302,18 +254,8 @@ class TaskNotificationService {
           taskId: taskId,
           taskName: taskName,
         );
-        print(
-          'Notifikasi background berhasil ditampilkan dan disimpan ke Firestore',
-        );
-      } else {
-        print('Data notifikasi background tidak lengkap atau tidak valid');
-        // Log data yang tidak valid untuk debugging
-        print(
-          'Invalid data received: ID=$id, Title=$title, Body=$body, UserIds=$userIds, Type=$type',
-        );
       }
     } catch (e) {
-      print('Error processing scheduled notification in background: $e');
       rethrow;
     }
   }

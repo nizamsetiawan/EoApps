@@ -34,9 +34,9 @@ class _PICHomePageState extends State<PICHomePage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   User? _currentUser;
   String _selectedNotificationFilter =
-      'Semua'; // State variable for notification filter
+      'Semua';
 
-  int _selectedIndex = 0; // 0: Menu, 1: Task, 2: Notifications
+  int _selectedIndex = 0;
 
   @override
   void initState() {
@@ -97,13 +97,11 @@ class _PICHomePageState extends State<PICHomePage> {
     });
   }
 
-  // Helper function to get the start of the week
   DateTime _getStartOfWeek(DateTime date) {
     final int daysSinceMonday = date.weekday - 1;
     return date.subtract(Duration(days: daysSinceMonday));
   }
 
-  // Date Selector Widget
   Widget _buildDateSelector() {
     final DateTime startOfWeek = _getStartOfWeek(_selectedDate);
     final List<DateTime> weekDates = List.generate(
@@ -114,7 +112,6 @@ class _PICHomePageState extends State<PICHomePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Month and Year Header
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: Row(
@@ -138,7 +135,6 @@ class _PICHomePageState extends State<PICHomePage> {
             ],
           ),
         ),
-        // Horizontal list of days
         SizedBox(
           height: 100,
           child: ListView.builder(
@@ -204,7 +200,6 @@ class _PICHomePageState extends State<PICHomePage> {
     );
   }
 
-  // Helper to get Month Name
   String _getMonthName(int month) {
     switch (month) {
       case 1:
@@ -236,7 +231,6 @@ class _PICHomePageState extends State<PICHomePage> {
     }
   }
 
-  // Helper to get Weekday Name
   String _getWeekdayName(int weekday) {
     switch (weekday) {
       case 1:
@@ -264,6 +258,16 @@ class _PICHomePageState extends State<PICHomePage> {
       initialDate: _selectedDate,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color.fromARGB(255, 33, 83, 36),
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked != null && picked != _selectedDate) {
       setState(() {
@@ -272,7 +276,6 @@ class _PICHomePageState extends State<PICHomePage> {
     }
   }
 
-  // Menu Utama
   Widget _buildMenuUtama() {
     return Center(
       child: SingleChildScrollView(
@@ -281,7 +284,6 @@ class _PICHomePageState extends State<PICHomePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Header Section
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -304,7 +306,7 @@ class _PICHomePageState extends State<PICHomePage> {
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: Color.fromARGB(255, 33, 83, 36),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -320,11 +322,9 @@ class _PICHomePageState extends State<PICHomePage> {
               ),
               const SizedBox(height: 30),
 
-              // Menu Grid
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Task Menu
                   Expanded(
                     child: GestureDetector(
                       onTap: () => setState(() => _currentPage = 'task'),
@@ -376,7 +376,6 @@ class _PICHomePageState extends State<PICHomePage> {
                     ),
                   ),
 
-                  // Data Client Menu
                   Expanded(
                     child: GestureDetector(
                       onTap: () => setState(() => _currentPage = 'client'),
@@ -436,7 +435,6 @@ class _PICHomePageState extends State<PICHomePage> {
     );
   }
 
-  // Task List View
   List<Widget> _buildTaskList() {
     return [
       StreamBuilder<List<Task>>(
@@ -450,7 +448,6 @@ class _PICHomePageState extends State<PICHomePage> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // Get all tasks for the selected date
           final tasks = snapshot.data!;
           tasks.sort((b, a) => a.jamMulai.compareTo(b.jamMulai));
 
@@ -511,7 +508,6 @@ class _PICHomePageState extends State<PICHomePage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Task Header
                           Row(
                             children: [
                               _getStatusIcon(task.status),
@@ -553,7 +549,6 @@ class _PICHomePageState extends State<PICHomePage> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Task Details
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
@@ -604,7 +599,6 @@ class _PICHomePageState extends State<PICHomePage> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Status Buttons
                           Row(
                             children:
                                 ['not complete', 'pending', 'done'].map((
@@ -658,7 +652,6 @@ class _PICHomePageState extends State<PICHomePage> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Notes Section
                           if (task.keterangan != null &&
                               task.keterangan!.isNotEmpty)
                             Column(
@@ -845,7 +838,6 @@ class _PICHomePageState extends State<PICHomePage> {
                             ),
                           const SizedBox(height: 16),
 
-                          // Evidence Section
                           if (task.bukti != null && task.bukti!.isNotEmpty)
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -890,8 +882,6 @@ class _PICHomePageState extends State<PICHomePage> {
                                       );
                                     },
                                     errorBuilder: (context, error, stackTrace) {
-                                      print('Error loading image: $error');
-                                      print('Image URL: ${task.bukti}');
                                       return Container(
                                         height: 200,
                                         color: Colors.grey[200],
@@ -922,7 +912,6 @@ class _PICHomePageState extends State<PICHomePage> {
                               ],
                             ),
 
-                          // Upload Button - Only show if no evidence exists
                           if (task.bukti == null || task.bukti!.isEmpty)
                             SizedBox(
                               width: double.infinity,
@@ -1021,13 +1010,11 @@ class _PICHomePageState extends State<PICHomePage> {
     );
   }
 
-  // Data Client Page
   Widget _buildDataClientPage() {
     return Padding(
       padding: const EdgeInsets.all(20.0),
       child: Column(
         children: [
-          // Header Section
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -1050,7 +1037,7 @@ class _PICHomePageState extends State<PICHomePage> {
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: Color.fromARGB(255, 33, 83, 36),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -1095,7 +1082,6 @@ class _PICHomePageState extends State<PICHomePage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Client Header
                           Row(
                             children: [
                               Container(
@@ -1146,7 +1132,6 @@ class _PICHomePageState extends State<PICHomePage> {
                           const Divider(height: 1),
                           const SizedBox(height: 20),
 
-                          // Vendor Section
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
@@ -1255,16 +1240,13 @@ class _PICHomePageState extends State<PICHomePage> {
     );
   }
 
-  // Notifications Page
   Widget _buildNotificationsPage() {
     return Column(
       children: [
-        // Filter dan Hapus Semua Button
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: Row(
             children: [
-              // Filter Dropdown
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1301,7 +1283,6 @@ class _PICHomePageState extends State<PICHomePage> {
                 ),
               ),
               const SizedBox(width: 8),
-              // Hapus Semua Button
               ElevatedButton.icon(
                 onPressed: () {
                   showDialog(
@@ -1371,7 +1352,6 @@ class _PICHomePageState extends State<PICHomePage> {
             ],
           ),
         ),
-        // Notifications List
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
             stream:
@@ -1381,11 +1361,6 @@ class _PICHomePageState extends State<PICHomePage> {
                     .orderBy('timestamp', descending: true)
                     .snapshots(),
             builder: (context, snapshot) {
-              // Log the current user's UID
-              print(
-                'Current user UID for notification query: ${_currentUser?.uid}',
-              );
-
               if (snapshot.hasError) {
                 return const Center(child: Text('Terjadi kesalahan'));
               }
@@ -1395,13 +1370,6 @@ class _PICHomePageState extends State<PICHomePage> {
               }
 
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                print('PIC Snapshot hasData: ${snapshot.hasData}');
-                print(
-                  'PIC Snapshot docs empty: ${snapshot.data?.docs.isEmpty}',
-                );
-                if (snapshot.hasError) {
-                  print('PIC Snapshot error: ${snapshot.error}');
-                }
                 return const Center(
                   child: Text(
                     'Belum ada notifikasi',
@@ -1410,16 +1378,10 @@ class _PICHomePageState extends State<PICHomePage> {
                 );
               }
 
-              // Filter notifications based on selected filter
               var filteredDocs =
                   snapshot.data!.docs.where((doc) {
-                    // Print raw data of the document before filtering
-                    print('PIC Raw notification doc data: ${doc.data()}');
-                    print('PIC Selected filter: $_selectedNotificationFilter');
                     final data = doc.data() as Map<String, dynamic>;
                     final type = data['type'] as String? ?? '';
-                    // Log the extracted type for debugging
-                    print('PIC Notification type (extracted): $type');
 
                     if (_selectedNotificationFilter == 'Semua') return true;
 
@@ -1440,7 +1402,6 @@ class _PICHomePageState extends State<PICHomePage> {
                   }).toList();
 
               if (filteredDocs.isEmpty) {
-                print('PIC Filtered docs count: ${filteredDocs.length}');
                 return Center(
                   child: Text(
                     'Tidak ada notifikasi untuk filter: $_selectedNotificationFilter',
@@ -1514,7 +1475,10 @@ class _PICHomePageState extends State<PICHomePage> {
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Notifikasi berhasil dihapus'), backgroundColor: Colors.red),
+              const SnackBar(
+                content: Text('Notifikasi berhasil dihapus'),
+                backgroundColor: Colors.red,
+              ),
             );
           }
         } catch (e) {
@@ -1576,7 +1540,6 @@ class _PICHomePageState extends State<PICHomePage> {
     );
   }
 
-  // Custom Bottom Navigation Bar
   Widget _buildCustomBottomNavigationBar() {
     return BottomAppBar(
       shape: const CircularNotchedRectangle(),
@@ -1586,7 +1549,6 @@ class _PICHomePageState extends State<PICHomePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: <Widget>[
-          // Home Button
           IconButton(
             icon: Icon(
               Icons.home,
@@ -1595,9 +1557,7 @@ class _PICHomePageState extends State<PICHomePage> {
             onPressed: () => _onItemTapped(0),
             tooltip: 'Menu Utama',
           ),
-          // Spacer for the center floating button
           const SizedBox(width: 48),
-          // Notifications Button
           IconButton(
             icon: Icon(
               Icons.notifications,
@@ -1643,7 +1603,6 @@ class _PICHomePageState extends State<PICHomePage> {
           _isEditingNotes[task.uid!] = false;
         });
 
-        // Kirim notifikasi untuk bukti diunggah
         final taskNotificationService = TaskNotificationService();
         await taskNotificationService.notifyUploadBukti(task, imageUrl);
 
@@ -1746,7 +1705,6 @@ class _PICHomePageState extends State<PICHomePage> {
 
                     final tasks = snapshot.data!;
                     tasks.sort((b, a) => a.jamMulai.compareTo(b.jamMulai));
-
 
                     if (tasks.isEmpty) {
                       return Center(

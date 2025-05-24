@@ -19,14 +19,12 @@ class NotificationService {
 
       const AndroidInitializationSettings initializationSettingsAndroid =
           AndroidInitializationSettings('@mipmap/ic_launcher');
-
       const DarwinInitializationSettings initializationSettingsIOS =
           DarwinInitializationSettings(
             requestAlertPermission: true,
             requestBadgePermission: true,
             requestSoundPermission: true,
           );
-
       const InitializationSettings initializationSettings =
           InitializationSettings(
             android: initializationSettingsAndroid,
@@ -106,8 +104,8 @@ class NotificationService {
     required String title,
     required String body,
     required String payload,
-    String channelId = "task_notification_channel",
-    String channelName = "Task Notifications",
+    String channelId = 'task_notification_channel',
+    String channelName = 'Task Notifications',
   }) async {
     try {
       final androidPlatformChannelSpecifics = AndroidNotificationDetails(
@@ -160,10 +158,7 @@ class NotificationService {
       final jakarta = tz.getLocation('Asia/Jakarta');
       final scheduledTimeZone = tz.TZDateTime.from(scheduledTime, jakarta);
       final now = tz.TZDateTime.now(jakarta);
-      print('Mencoba menjadwalkan notifikasi untuk: $scheduledTimeZone');
-      print('Waktu sekarang: $now');
       if (scheduledTimeZone.isBefore(now)) {
-        print('Waktu sudah lewat, tidak menjadwalkan notifikasi');
         return;
       }
       final androidPlatformChannelSpecifics = AndroidNotificationDetails(
@@ -199,15 +194,12 @@ class NotificationService {
       );
       try {
         await flutterLocalNotificationsPlugin.cancel(notificationId);
-      } catch (e) {
-        print('Tidak ada notifikasi lama untuk dibatalkan');
-      }
+      } catch (e) {}
 
       final scheduledTimeMillis = scheduledTimeZone.millisecondsSinceEpoch;
       final nowMillis = now.millisecondsSinceEpoch;
 
       if (scheduledTimeMillis <= nowMillis) {
-        print('Waktu jadwal tidak valid, tidak menjadwalkan notifikasi');
         return;
       }
 
@@ -219,9 +211,7 @@ class NotificationService {
         notificationDetails,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       );
-      print('Berhasil menjadwalkan notifikasi untuk: $scheduledTimeZone');
     } catch (e) {
-      print('Error saat menjadwalkan notifikasi: $e');
       rethrow;
     }
   }

@@ -34,15 +34,13 @@ class _PMHomePageState extends State<PMHomePage> {
   final ImagePicker _picker = ImagePicker();
   final Map<String, bool> _isEditingNotes = {};
   final Map<String, bool> _isUploading = {};
-  int _selectedIndex =
-      0; // 0: Menu, 1: Create Task (Placeholder), 2: Notifications
+  int _selectedIndex = 0;
   DateTime _startDate = DateTime.now().subtract(const Duration(days: 30));
   DateTime _endDate = DateTime.now();
   bool _isDateRangeMode = false;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   User? _currentUser;
-  String _selectedNotificationFilter =
-      'Semua'; // State variable for notification filter
+  String _selectedNotificationFilter = 'Semua';
 
   @override
   void initState() {
@@ -93,18 +91,11 @@ class _PMHomePageState extends State<PMHomePage> {
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
-      // Map index to page
       if (index == 0) {
         _currentPage = 'menu';
-      } else if (index == 1) {
-        // Central icon - no navigation, remains on current page or default
-        // For now, let's keep it on the current page or default to menu
-        _currentPage = 'menu'; // Or handle specific action if needed
       } else if (index == 2) {
-        // Task list view - corresponds to the second icon slot in the new bar logic
         _currentPage = 'task';
       } else if (index == 3) {
-        // Placeholder for notifications page
         _currentPage = 'notifications';
       }
     });
@@ -152,13 +143,11 @@ class _PMHomePageState extends State<PMHomePage> {
     }
   }
 
-  // Helper function to get the start of the week
   DateTime _getStartOfWeek(DateTime date) {
     final int daysSinceMonday = date.weekday - 1;
     return date.subtract(Duration(days: daysSinceMonday));
   }
 
-  // Date Selector Widget
   Widget _buildDateSelector() {
     final DateTime startOfWeek = _getStartOfWeek(_selectedDate);
     final List<DateTime> weekDates = List.generate(
@@ -169,7 +158,6 @@ class _PMHomePageState extends State<PMHomePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Month and Year Header
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: Row(
@@ -193,9 +181,8 @@ class _PMHomePageState extends State<PMHomePage> {
             ],
           ),
         ),
-        // Horizontal list of days
         SizedBox(
-          height: 100, // Adjust height as needed
+          height: 100,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: weekDates.length,
@@ -212,7 +199,7 @@ class _PMHomePageState extends State<PMHomePage> {
                   });
                 },
                 child: Container(
-                  width: 65, // Adjust width as needed
+                  width: 65,
                   margin: const EdgeInsets.symmetric(horizontal: 4),
                   child: Card(
                     color:
@@ -259,7 +246,6 @@ class _PMHomePageState extends State<PMHomePage> {
     );
   }
 
-  // Helper to get Month Name
   String _getMonthName(int month) {
     switch (month) {
       case 1:
@@ -291,7 +277,6 @@ class _PMHomePageState extends State<PMHomePage> {
     }
   }
 
-  // Helper to get Weekday Name
   String _getWeekdayName(int weekday) {
     switch (weekday) {
       case 1:
@@ -321,7 +306,6 @@ class _PMHomePageState extends State<PMHomePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Header Section
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -358,11 +342,9 @@ class _PMHomePageState extends State<PMHomePage> {
               ),
               const SizedBox(height: 30),
 
-              // Menu Grid
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Task Menu
                   Expanded(
                     child: GestureDetector(
                       onTap: () => setState(() => _currentPage = 'task'),
@@ -414,7 +396,6 @@ class _PMHomePageState extends State<PMHomePage> {
                     ),
                   ),
 
-                  // Data Client Menu
                   Expanded(
                     child: GestureDetector(
                       onTap: () => setState(() => _currentPage = 'client'),
@@ -469,11 +450,9 @@ class _PMHomePageState extends State<PMHomePage> {
               ),
               const SizedBox(height: 20),
 
-              // Additional Menu Items
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Create Task Menu
                   Expanded(
                     child: GestureDetector(
                       onTap: () {
@@ -532,7 +511,6 @@ class _PMHomePageState extends State<PMHomePage> {
                     ),
                   ),
 
-                  // Recap Menu
                   Expanded(
                     child: GestureDetector(
                       onTap: () {
@@ -596,7 +574,6 @@ class _PMHomePageState extends State<PMHomePage> {
     );
   }
 
-  // Task List View
   List<Widget> _buildTaskList() {
     return [
       StreamBuilder<List<Task>>(
@@ -618,10 +595,7 @@ class _PMHomePageState extends State<PMHomePage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-              SizedBox.fromSize(
-              size:
-              const Size.fromHeight(150),
-              ),
+                  SizedBox.fromSize(size: const Size.fromHeight(150)),
                   const Text(
                     "Waw kamu bisa santai hari ini",
                     style: TextStyle(
@@ -633,10 +607,7 @@ class _PMHomePageState extends State<PMHomePage> {
                   const SizedBox(height: 8),
                   Text(
                     "Tanggal: ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}",
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                    ),
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
                   ),
                 ],
               ),
@@ -680,7 +651,6 @@ class _PMHomePageState extends State<PMHomePage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Task Header
                               Row(
                                 children: [
                                   _getStatusIcon(task.status),
@@ -728,7 +698,6 @@ class _PMHomePageState extends State<PMHomePage> {
                               ),
                               const SizedBox(height: 16),
 
-                              // Task Details
                               Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
@@ -779,7 +748,6 @@ class _PMHomePageState extends State<PMHomePage> {
                               ),
                               const SizedBox(height: 16),
 
-                              // Status Buttons
                               Row(
                                 children:
                                     ['not complete', 'pending', 'done'].map((
@@ -838,7 +806,6 @@ class _PMHomePageState extends State<PMHomePage> {
                               ),
                               const SizedBox(height: 16),
 
-                              // Notes Section
                               if (task.keterangan != null &&
                                   task.keterangan!.isNotEmpty)
                                 Column(
@@ -1038,7 +1005,6 @@ class _PMHomePageState extends State<PMHomePage> {
                                 ),
                               const SizedBox(height: 16),
 
-                              // Evidence Section
                               if (task.bukti != null && task.bukti!.isNotEmpty)
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1088,8 +1054,6 @@ class _PMHomePageState extends State<PMHomePage> {
                                           error,
                                           stackTrace,
                                         ) {
-                                          print('Error loading image: $error');
-                                          print('Image URL: ${task.bukti}');
                                           return Container(
                                             height: 200,
                                             color: Colors.grey[200],
@@ -1118,10 +1082,9 @@ class _PMHomePageState extends State<PMHomePage> {
                                     ),
                                     const SizedBox(height: 16),
                                   ],
-                                ),
-
-                              // Upload Button - Only show if no evidence exists
-                              if (task.bukti == null || task.bukti!.isEmpty)
+                                )
+                              else if (task.bukti == null ||
+                                  task.bukti!.isEmpty)
                                 SizedBox(
                                   width: double.infinity,
                                   child: ElevatedButton.icon(
@@ -1240,13 +1203,11 @@ class _PMHomePageState extends State<PMHomePage> {
     }
   }
 
-  //====================================== Page Data Client ====================
   Widget _buildDataClientPage() {
     return Padding(
       padding: const EdgeInsets.all(20.0),
       child: Column(
         children: [
-          // Header Section
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -1314,7 +1275,6 @@ class _PMHomePageState extends State<PMHomePage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Client Header
                           Row(
                             children: [
                               Container(
@@ -1365,7 +1325,6 @@ class _PMHomePageState extends State<PMHomePage> {
                           const Divider(height: 1),
                           const SizedBox(height: 20),
 
-                          // Vendor Section
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
@@ -1474,7 +1433,6 @@ class _PMHomePageState extends State<PMHomePage> {
     );
   }
 
-  //====================================== Recap =================
   Widget _buildRecapPage() {
     return StreamBuilder<List<Task>>(
       stream:
@@ -1505,23 +1463,19 @@ class _PMHomePageState extends State<PMHomePage> {
 
         final tasks = snapshot.data!;
 
-        // Calculate statistics
         final totalTasks = tasks.length;
         final notCompleteTasks =
             tasks.where((t) => t.status == 'not complete').length;
         final pendingTasks = tasks.where((t) => t.status == 'pending').length;
         final doneTasks = tasks.where((t) => t.status == 'done').length;
 
-        // Calculate completion rate
         final completionRate =
             totalTasks > 0 ? (doneTasks / totalTasks * 100) : 0;
 
-        // Calculate average tasks per day
         final daysDiff =
             _isDateRangeMode ? _endDate.difference(_startDate).inDays + 1 : 1;
         final avgTasksPerDay = totalTasks / daysDiff;
 
-        // Calculate average completion time (in hours)
         double totalCompletionTime = 0;
         int completedTasksCount = 0;
         for (var task in tasks) {
@@ -1540,7 +1494,6 @@ class _PMHomePageState extends State<PMHomePage> {
                 ? totalCompletionTime / completedTasksCount
                 : 0;
 
-        // Group tasks by PIC
         final tasksByPIC = <String, int>{};
         for (var task in tasks) {
           tasksByPIC[task.pic] = (tasksByPIC[task.pic] ?? 0) + 1;
@@ -1551,7 +1504,6 @@ class _PMHomePageState extends State<PMHomePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -1653,7 +1605,6 @@ class _PMHomePageState extends State<PMHomePage> {
               ),
               const SizedBox(height: 20),
 
-              // Quick Stats Grid
               GridView.count(
                 crossAxisCount: 2,
                 shrinkWrap: true,
@@ -1690,7 +1641,6 @@ class _PMHomePageState extends State<PMHomePage> {
               ),
               const SizedBox(height: 20),
 
-              // Status Distribution
               Card(
                 elevation: 4,
                 shape: RoundedRectangleBorder(
@@ -1760,7 +1710,6 @@ class _PMHomePageState extends State<PMHomePage> {
               ),
               const SizedBox(height: 20),
 
-              // Tasks by PIC
               Card(
                 elevation: 4,
                 shape: RoundedRectangleBorder(
@@ -1915,16 +1864,13 @@ class _PMHomePageState extends State<PMHomePage> {
     );
   }
 
-  //====================================== Notifications Page Placeholder ====
   Widget _buildNotificationsPage() {
     return Column(
       children: [
-        // Filter dan Hapus Semua Button
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: Row(
             children: [
-              // Filter Dropdown
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1961,7 +1907,6 @@ class _PMHomePageState extends State<PMHomePage> {
                 ),
               ),
               const SizedBox(width: 8),
-              // Hapus Semua Button
               ElevatedButton.icon(
                 onPressed: () {
                   showDialog(
@@ -2031,7 +1976,6 @@ class _PMHomePageState extends State<PMHomePage> {
             ],
           ),
         ),
-        // Notifications List
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
             stream:
@@ -2041,6 +1985,7 @@ class _PMHomePageState extends State<PMHomePage> {
                     .orderBy('timestamp', descending: true)
                     .snapshots(),
             builder: (context, snapshot) {
+
               if (snapshot.hasError) {
                 return const Center(child: Text('Terjadi kesalahan'));
               }
@@ -2050,10 +1995,7 @@ class _PMHomePageState extends State<PMHomePage> {
               }
 
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                print('Snapshot hasData: ${snapshot.hasData}');
-                print('Snapshot docs empty: ${snapshot.data?.docs.isEmpty}');
                 if (snapshot.hasError) {
-                  print('Snapshot error: ${snapshot.error}');
                 }
                 return const Center(
                   child: Text(
@@ -2063,18 +2005,12 @@ class _PMHomePageState extends State<PMHomePage> {
                 );
               }
 
-              // Filter notifications based on selected filter
               var filteredDocs =
                   snapshot.data!.docs.where((doc) {
-                    // Print raw data of the document before filtering
-                    print('Raw notification doc data: ${doc.data()}');
-                    print('Selected filter: $_selectedNotificationFilter');
 
                     final data = doc.data() as Map<String, dynamic>;
                     final type = data['type'] as String? ?? '';
 
-                    // Log the extracted type for debugging
-                    print('Notification type (extracted): $type');
 
                     if (_selectedNotificationFilter == 'Semua') return true;
 
@@ -2095,7 +2031,6 @@ class _PMHomePageState extends State<PMHomePage> {
                   }).toList();
 
               if (filteredDocs.isEmpty) {
-                print('Filtered docs count: ${filteredDocs.length}');
                 return Center(
                   child: Text(
                     'Tidak ada notifikasi untuk filter: $_selectedNotificationFilter',
@@ -2169,7 +2104,10 @@ class _PMHomePageState extends State<PMHomePage> {
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Notifikasi berhasil dihapus'),backgroundColor: Colors.red),
+              const SnackBar(
+                content: Text('Notifikasi berhasil dihapus'),
+                backgroundColor: Colors.red,
+              ),
             );
           }
         } catch (e) {
@@ -2231,7 +2169,6 @@ class _PMHomePageState extends State<PMHomePage> {
     );
   }
 
-  // Custom Bottom Navigation Bar
   Widget _buildCustomBottomNavigationBar() {
     return BottomAppBar(
       shape: const CircularNotchedRectangle(),
@@ -2241,7 +2178,6 @@ class _PMHomePageState extends State<PMHomePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: <Widget>[
-          // Home Button
           IconButton(
             icon: Icon(
               Icons.home,
@@ -2250,9 +2186,7 @@ class _PMHomePageState extends State<PMHomePage> {
             onPressed: () => _onItemTapped(0),
             tooltip: 'Menu Utama',
           ),
-          // Spacer for the center floating button
           const SizedBox(width: 48),
-          // Notifications Button
           IconButton(
             icon: Icon(
               Icons.notifications,
@@ -2298,7 +2232,6 @@ class _PMHomePageState extends State<PMHomePage> {
           _isEditingNotes[task.uid!] = false;
         });
 
-        // Kirim notifikasi bukti diunggah
         final taskNotificationService = TaskNotificationService();
         await taskNotificationService.notifyUploadBukti(task, imageUrl);
 
@@ -2375,7 +2308,6 @@ class _PMHomePageState extends State<PMHomePage> {
     }
   }
 
-  // Helper method to parse time string to DateTime
   DateTime? _parseTime(String timeStr) {
     try {
       final parts = timeStr.split(':');
@@ -2390,7 +2322,6 @@ class _PMHomePageState extends State<PMHomePage> {
     return null;
   }
 
-  // =========== BUILD =============
   @override
   Widget build(BuildContext context) {
     Widget bodyContent;

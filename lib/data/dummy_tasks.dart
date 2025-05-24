@@ -4,15 +4,9 @@ import 'package:kenongotask2/services/task_notification_service.dart';
 import 'package:kenongotask2/services/image_service.dart';
 import 'dart:io';
 
-// List dummyTasks untuk menyimpan tugas-tugas
 List<Task> dummyTasks = [];
 
 final taskNotificationService = TaskNotificationService();
-
-// Fungsi untuk menambah tugas baru
-// void addTask(Task task) {
-//   dummyTasks.add(task);
-// }
 
 Future<String?> addTask(Task task) async {
   try {
@@ -31,42 +25,6 @@ Future<String?> addTask(Task task) async {
     return null;
   }
 }
-
-// Future<List<Task>> getTasks(DateTime selectedDate) async {
-//   try {
-//     final querySnapshot =
-//         await FirebaseFirestore.instance
-//             .collection('tasks')
-//             .where(
-//               'tanggal',
-//               isGreaterThanOrEqualTo: DateTime(
-//                 selectedDate.year,
-//                 selectedDate.month,
-//                 selectedDate.day,
-//                 0,
-//                 0,
-//                 0,
-//               ),
-//             )
-//             .where(
-//               'tanggal',
-//               isLessThan: DateTime(
-//                 selectedDate.year,
-//                 selectedDate.month,
-//                 selectedDate.day + 1,
-//                 0,
-//                 0,
-//                 0,
-//               ),
-//             )
-//             .get();
-
-//     return querySnapshot.docs.map((doc) => Task.fromFirestore(doc)).toList();
-//   } catch (e) {
-//     print("Error saat mengambil task: $e");
-//     return [];
-//   }
-// }
 
 Future<void> setStatus(String selectedTask, String newStatus) async {
   try {

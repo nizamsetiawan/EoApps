@@ -7,7 +7,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../data/dummy_data_client.dart';
 
-// =========== CREATE TASK PAGE PM =============
 class CreateTaskPage extends StatefulWidget {
   const CreateTaskPage({super.key});
 
@@ -16,7 +15,6 @@ class CreateTaskPage extends StatefulWidget {
 }
 
 class _CreateTaskPageState extends State<CreateTaskPage> {
-  // =========== VARIABEL =============
   final _formKey = GlobalKey<FormState>();
   final _notificationService = NotificationService();
   String _namaTugas = '';
@@ -29,7 +27,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   TimeOfDay _selectedEndTime = TimeOfDay.now();
   bool _isLoading = false;
 
-  // Predefined PIC options
   final List<String> _picOptions = [
     'CPW',
     'CPP',
@@ -47,16 +44,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     super.initState();
   }
 
-  // =========== SUBMIT FORM =============
   Future<void> _submitForm() async {
-    // Ensure form is valid before proceeding
     if (!_formKey.currentState!.validate()) {
-      return; // Stop if form is not valid
+      return;
     }
 
     _formKey.currentState!.save();
 
-    // Validate time fields
     if (_jamMulai.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -77,7 +71,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       return;
     }
 
-    // Additional check for PIC, although validator should handle this
     if (_pic.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -93,7 +86,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     });
 
     try {
-      // Ensure namaTugas is not empty before creating Task object
       if (_namaTugas.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -123,15 +115,12 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         status: 'pending',
       );
 
-      // Tambahkan task
       final taskId = await addTask(task);
 
       if (taskId != null) {
-        // Kirim notifikasi saat tugas dibuat ke Firestore
         final taskNotificationService = TaskNotificationService();
         await taskNotificationService.notifyNewTask(task);
 
-        // Kirim beberapa notifikasi pengingat setiap 2 menit sebelum tugas
         final maxReminders = 3;
         final startTime = startDateTime;
 
@@ -234,7 +223,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     }
   }
 
-  // =========== DATE PICKER =============
   Future<void> _selectDate(BuildContext context) async {
     final picked = await showDatePicker(
       context: context,
@@ -289,7 +277,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     }
   }
 
-  // =========== BUILD =============
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -324,7 +311,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     );
   }
 
-  // =========== FORM TUGAS ============
   Widget _buildTugasForm() {
     return Padding(
       padding: const EdgeInsets.all(20),
@@ -332,7 +318,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         key: _formKey,
         child: ListView(
           children: [
-            // Header Section
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -368,7 +353,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             ),
             const SizedBox(height: 24),
 
-            // ========== TANGGAL ==========
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -431,7 +415,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             ),
             const SizedBox(height: 16),
 
-            // ========== NAMA TUGAS ==========
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -483,7 +466,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             ),
             const SizedBox(height: 16),
 
-            // ========== JAM MULAI & SELESAI ==========
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -577,7 +559,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             ),
             const SizedBox(height: 16),
 
-            // ========== NAMA PM ==========
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -625,7 +606,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             ),
             const SizedBox(height: 16),
 
-            // ========== PILIH PIC ==========
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -696,7 +676,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             ),
             const SizedBox(height: 24),
 
-            // ========== BUTTON ==========
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color.fromARGB(255, 33, 83, 36),

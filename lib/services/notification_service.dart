@@ -4,6 +4,7 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -51,6 +52,20 @@ class NotificationService {
               >();
 
       if (androidPlugin != null) {
+        // Create high importance channel for foreground notifications
+        await androidPlugin.createNotificationChannel(
+          const AndroidNotificationChannel(
+            'high_importance_channel',
+            'High Importance Notifications',
+            description: 'This channel is used for important notifications',
+            importance: Importance.max,
+            enableVibration: true,
+            playSound: true,
+            showBadge: true,
+          ),
+        );
+
+        // Create task notification channel
         await androidPlugin.createNotificationChannel(
           const AndroidNotificationChannel(
             'task_notification_channel',
@@ -111,9 +126,15 @@ class NotificationService {
     String channelName = 'Task Notifications',
   }) async {
     try {
+      print('Menampilkan notifikasi:');
+      print('- ID: $id');
+      print('- Title: $title');
+      print('- Body: $body');
+
       final androidPlatformChannelSpecifics = AndroidNotificationDetails(
         channelId,
         channelName,
+        channelDescription: 'Notifications for task updates',
         importance: Importance.max,
         priority: Priority.high,
         enableVibration: true,
@@ -125,6 +146,9 @@ class NotificationService {
         showWhen: true,
         autoCancel: true,
         ongoing: false,
+        ticker: 'New notification',
+        icon: '@mipmap/ic_launcher',
+        color: const Color(0xFF50C878),
       );
 
       final iOSPlatformChannelSpecifics = DarwinNotificationDetails(
@@ -132,6 +156,8 @@ class NotificationService {
         presentBadge: true,
         presentSound: true,
         interruptionLevel: InterruptionLevel.timeSensitive,
+        sound: 'default',
+        badgeNumber: 1,
       );
 
       final notificationDetails = NotificationDetails(
@@ -146,8 +172,20 @@ class NotificationService {
         notificationDetails,
         payload: payload,
       );
+
+      print('Notifikasi berhasil ditampilkan');
     } catch (e) {
+      print('Error saat menampilkan notifikasi: $e');
       rethrow;
+    }
+  }
+
+  Future<void> cancelNotification(int id) async {
+    try {
+      await flutterLocalNotificationsPlugin.cancel(id);
+      print('Notifikasi dengan ID $id dibatalkan');
+    } catch (e) {
+      print('Error saat membatalkan notifikasi: $e');
     }
   }
 

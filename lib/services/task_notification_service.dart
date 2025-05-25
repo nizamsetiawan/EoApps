@@ -70,12 +70,16 @@ class TaskNotificationService {
       final roleTokens = await _fcmService.getAllTokens();
       print('Retrieved tokens by role: $roleTokens');
 
+      // Collect all user IDs for Firestore notification
+      List<String> allUserIds = [];
+
       // Send to all tokens
       for (var role in roleTokens.keys) {
         for (var tokenData in roleTokens[role]!) {
           final token = tokenData['token'] as String;
           final email = tokenData['email'] as String?;
           final userId = tokenData['userId'] as String;
+          allUserIds.add(userId);
 
           print('Sending to role $role, email $email, userId $userId');
           final success = await FCMService.sendNotification(
@@ -92,6 +96,20 @@ class TaskNotificationService {
           }
         }
       }
+
+      // Save notification to Firestore
+      await _firestore.collection('notifications').add({
+        'userIds': allUserIds,
+        'title': title,
+        'body': body,
+        'type': data['type'],
+        'taskId': data['taskId'],
+        'taskName': data['taskName'],
+        'timestamp': FieldValue.serverTimestamp(),
+        'read': false,
+      });
+
+      print('Notification saved to Firestore for users: $allUserIds');
     } catch (e) {
       print('Error sending FCM to users: $e');
     }

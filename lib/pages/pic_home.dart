@@ -33,8 +33,7 @@ class _PICHomePageState extends State<PICHomePage> {
   final Map<String, bool> _isUploading = {};
   final FirebaseAuth _auth = FirebaseAuth.instance;
   User? _currentUser;
-  String _selectedNotificationFilter =
-      'Semua';
+  String _selectedNotificationFilter = 'Semua';
 
   int _selectedIndex = 0;
 

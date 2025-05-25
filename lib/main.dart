@@ -14,16 +14,21 @@ import 'services/fcm_service.dart';
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   print('Handling a background message: ${message.messageId}');
+  print('Background message data: ${message.data}');
+  print('Background message notification: ${message.notification?.title}');
 
   final NotificationService notificationService = NotificationService();
   await notificationService.initialize();
 
-  await notificationService.showNotification(
-    id: message.hashCode,
-    title: message.notification?.title ?? 'New Notification',
-    body: message.notification?.body ?? '',
-    payload: message.data['taskId'] ?? '',
-  );
+  if (message.notification != null) {
+    await notificationService.showNotification(
+      id: message.hashCode,
+      title: message.notification!.title ?? 'New Notification',
+      body: message.notification!.body ?? '',
+      payload: message.data['taskId'] ?? '',
+    );
+    print('Background notification displayed');
+  }
 }
 
 // Entry point for background tasks managed by Workmanager

@@ -1985,7 +1985,6 @@ class _PMHomePageState extends State<PMHomePage> {
                     .orderBy('timestamp', descending: true)
                     .snapshots(),
             builder: (context, snapshot) {
-
               if (snapshot.hasError) {
                 return const Center(child: Text('Terjadi kesalahan'));
               }
@@ -1995,8 +1994,7 @@ class _PMHomePageState extends State<PMHomePage> {
               }
 
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                if (snapshot.hasError) {
-                }
+                if (snapshot.hasError) {}
                 return const Center(
                   child: Text(
                     'Belum ada notifikasi',
@@ -2007,10 +2005,8 @@ class _PMHomePageState extends State<PMHomePage> {
 
               var filteredDocs =
                   snapshot.data!.docs.where((doc) {
-
                     final data = doc.data() as Map<String, dynamic>;
                     final type = data['type'] as String? ?? '';
-
 
                     if (_selectedNotificationFilter == 'Semua') return true;
 

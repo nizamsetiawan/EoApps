@@ -3,6 +3,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -11,6 +12,8 @@ final StreamController<String?> selectNotificationStream =
     StreamController<String?>.broadcast();
 
 class NotificationService {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
   Future<void> initialize() async {
     try {
       tz.initializeTimeZones();
@@ -143,6 +146,35 @@ class NotificationService {
         notificationDetails,
         payload: payload,
       );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> sendFCMNotification({
+    required List<String> userIds,
+    required String title,
+    required String body,
+    required String type,
+    String? taskId,
+    String? taskName,
+  }) async {
+    try {
+      // Ambil FCM token dari Firestore untuk setiap user
+      for (String userId in userIds) {
+        final userDoc = await _firestore.collection('users').doc(userId).get();
+        final String? fcmToken = userDoc.data()?['fcmToken'];
+
+        if (fcmToken != null) {
+          // Kirim notifikasi FCM
+          await _firestore.collection('fcm_messages').add({
+            'token': fcmToken,
+            'notification': {'title': title, 'body': body},
+            'data': {'type': type, 'taskId': taskId, 'taskName': taskName},
+            'timestamp': FieldValue.serverTimestamp(),
+          });
+        }
+      }
     } catch (e) {
       rethrow;
     }

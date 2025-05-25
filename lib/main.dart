@@ -8,10 +8,22 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:workmanager/workmanager.dart';
 import 'services/task_notification_service.dart';
+import 'services/fcm_service.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  print('Handling a background message: ${message.messageId}');
+
+  final NotificationService notificationService = NotificationService();
+  await notificationService.initialize();
+
+  await notificationService.showNotification(
+    id: message.hashCode,
+    title: message.notification?.title ?? 'New Notification',
+    body: message.notification?.body ?? '',
+    payload: message.data['taskId'] ?? '',
+  );
 }
 
 // Entry point for background tasks managed by Workmanager
@@ -47,31 +59,18 @@ void main() async {
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
+  // Setup background message handler
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
+  // Initialize Workmanager
   Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
 
   final notificationService = NotificationService();
   await notificationService.initialize();
 
-  await FirebaseMessaging.instance.requestPermission(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
-
-  String? token = await FirebaseMessaging.instance.getToken();
-
-  FirebaseMessaging.instance.onTokenRefresh.listen((String token) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).update(
-        {'fcmToken': token},
-      );
-    }
-  });
-
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) {});
+  // Initialize FCM Service
+  final fcmService = FCMService();
+  await fcmService.initialize();
 
   runApp(const TaskSchedulingApp());
 }

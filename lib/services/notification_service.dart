@@ -6,35 +6,45 @@ import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+// Plugin untuk menangani notifikasi lokal
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 
+// Stream untuk menangani notifikasi yang dipilih
 final StreamController<String?> selectNotificationStream =
     StreamController<String?>.broadcast();
 
 class NotificationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  // Inisialisasi service notifikasi
   Future<void> initialize() async {
     try {
+      // Atur timezone ke Jakarta
       tz.initializeTimeZones();
       tz.setLocalLocation(tz.getLocation('Asia/Jakarta'));
       await requestPermissions();
 
+      // Konfigurasi untuk Android
       const AndroidInitializationSettings initializationSettingsAndroid =
           AndroidInitializationSettings('@mipmap/ic_launcher');
+
+      // Konfigurasi untuk iOS
       const DarwinInitializationSettings initializationSettingsIOS =
           DarwinInitializationSettings(
             requestAlertPermission: true,
             requestBadgePermission: true,
             requestSoundPermission: true,
           );
+
+      // Gabungkan konfigurasi
       const InitializationSettings initializationSettings =
           InitializationSettings(
             android: initializationSettingsAndroid,
             iOS: initializationSettingsIOS,
           );
 
+      // Inisialisasi plugin notifikasi
       await flutterLocalNotificationsPlugin.initialize(
         initializationSettings,
         onDidReceiveNotificationResponse: (NotificationResponse response) {
@@ -45,6 +55,7 @@ class NotificationService {
         },
       );
 
+      // Konfigurasi khusus untuk Android
       final androidPlugin =
           flutterLocalNotificationsPlugin
               .resolvePlatformSpecificImplementation<
@@ -52,12 +63,12 @@ class NotificationService {
               >();
 
       if (androidPlugin != null) {
-        // Create high importance channel for foreground notifications
+        // Buat channel untuk notifikasi penting
         await androidPlugin.createNotificationChannel(
           const AndroidNotificationChannel(
             'high_importance_channel',
-            'High Importance Notifications',
-            description: 'This channel is used for important notifications',
+            'Notifikasi Penting',
+            description: 'Channel ini digunakan untuk notifikasi penting',
             importance: Importance.max,
             enableVibration: true,
             playSound: true,
@@ -65,16 +76,33 @@ class NotificationService {
           ),
         );
 
-        // Create task notification channel
+        // Buat channel untuk notifikasi task
         await androidPlugin.createNotificationChannel(
           const AndroidNotificationChannel(
             'task_notification_channel',
-            'Task Notifications',
-            description: 'Notifications for task updates',
+            'Notifikasi Task',
+            description: 'Notifikasi untuk pembaruan task',
             importance: Importance.max,
             enableVibration: true,
             playSound: true,
             showBadge: true,
+            enableLights: true,
+            ledColor: Color(0xFF50C878),
+          ),
+        );
+
+        // Buat channel untuk pengingat task
+        await androidPlugin.createNotificationChannel(
+          const AndroidNotificationChannel(
+            'task_reminder_channel',
+            'Pengingat Task',
+            description: 'Notifikasi pengingat untuk task',
+            importance: Importance.high,
+            enableVibration: true,
+            playSound: true,
+            showBadge: true,
+            enableLights: true,
+            ledColor: Color(0xFFFFA500),
           ),
         );
       }
@@ -83,6 +111,7 @@ class NotificationService {
     }
   }
 
+  // Minta izin notifikasi
   Future<bool?> requestPermissions() async {
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       final iOSImplementation =
@@ -117,24 +146,21 @@ class NotificationService {
     }
   }
 
+  // Tampilkan notifikasi
   Future<void> showNotification({
     required int id,
     required String title,
     required String body,
     required String payload,
     String channelId = 'task_notification_channel',
-    String channelName = 'Task Notifications',
+    String channelName = 'Notifikasi Task',
   }) async {
     try {
-      print('Menampilkan notifikasi:');
-      print('- ID: $id');
-      print('- Title: $title');
-      print('- Body: $body');
-
+      // Konfigurasi untuk Android
       final androidPlatformChannelSpecifics = AndroidNotificationDetails(
         channelId,
         channelName,
-        channelDescription: 'Notifications for task updates',
+        channelDescription: 'Notifikasi untuk pembaruan task',
         importance: Importance.max,
         priority: Priority.high,
         enableVibration: true,
@@ -146,11 +172,12 @@ class NotificationService {
         showWhen: true,
         autoCancel: true,
         ongoing: false,
-        ticker: 'New notification',
+        ticker: 'Notifikasi baru',
         icon: '@mipmap/ic_launcher',
         color: const Color(0xFF50C878),
       );
 
+      // Konfigurasi untuk iOS
       final iOSPlatformChannelSpecifics = DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
@@ -160,11 +187,13 @@ class NotificationService {
         badgeNumber: 1,
       );
 
+      // Gabungkan konfigurasi
       final notificationDetails = NotificationDetails(
         android: androidPlatformChannelSpecifics,
         iOS: iOSPlatformChannelSpecifics,
       );
 
+      // Tampilkan notifikasi
       await flutterLocalNotificationsPlugin.show(
         id,
         title,
@@ -172,23 +201,21 @@ class NotificationService {
         notificationDetails,
         payload: payload,
       );
-
-      print('Notifikasi berhasil ditampilkan');
     } catch (e) {
-      print('Error saat menampilkan notifikasi: $e');
       rethrow;
     }
   }
 
+  // Batalkan notifikasi
   Future<void> cancelNotification(int id) async {
     try {
       await flutterLocalNotificationsPlugin.cancel(id);
-      print('Notifikasi dengan ID $id dibatalkan');
     } catch (e) {
-      print('Error saat membatalkan notifikasi: $e');
+      // Abaikan error jika notifikasi tidak ditemukan
     }
   }
 
+  // Kirim notifikasi FCM
   Future<void> sendFCMNotification({
     required List<String> userIds,
     required String title,
@@ -198,13 +225,13 @@ class NotificationService {
     String? taskName,
   }) async {
     try {
-      // Ambil FCM token dari Firestore untuk setiap user
+      // Kirim notifikasi ke setiap user
       for (String userId in userIds) {
         final userDoc = await _firestore.collection('users').doc(userId).get();
         final String? fcmToken = userDoc.data()?['fcmToken'];
 
         if (fcmToken != null) {
-          // Kirim notifikasi FCM
+          // Simpan pesan FCM ke Firestore
           await _firestore.collection('fcm_messages').add({
             'token': fcmToken,
             'notification': {'title': title, 'body': body},
@@ -218,6 +245,7 @@ class NotificationService {
     }
   }
 
+  // Jadwalkan notifikasi task
   Future<void> scheduleTaskNotification({
     required String title,
     required String body,
@@ -225,16 +253,21 @@ class NotificationService {
     required int notificationId,
   }) async {
     try {
+      // Konversi waktu ke timezone Jakarta
       final jakarta = tz.getLocation('Asia/Jakarta');
       final scheduledTimeZone = tz.TZDateTime.from(scheduledTime, jakarta);
       final now = tz.TZDateTime.now(jakarta);
+
+      // Abaikan jika waktu sudah lewat
       if (scheduledTimeZone.isBefore(now)) {
         return;
       }
+
+      // Konfigurasi untuk Android
       final androidPlatformChannelSpecifics = AndroidNotificationDetails(
         'task_notification_channel',
-        'Task Notifications',
-        channelDescription: 'Notifications for task updates',
+        'Notifikasi Task',
+        channelDescription: 'Notifikasi untuk pembaruan task',
         importance: Importance.max,
         priority: Priority.high,
         styleInformation: BigTextStyleInformation(
@@ -252,20 +285,27 @@ class NotificationService {
         autoCancel: true,
         ongoing: false,
       );
+
+      // Konfigurasi untuk iOS
       final iOSPlatformChannelSpecifics = DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
         presentSound: true,
         interruptionLevel: InterruptionLevel.timeSensitive,
       );
+
+      // Gabungkan konfigurasi
       final notificationDetails = NotificationDetails(
         android: androidPlatformChannelSpecifics,
         iOS: iOSPlatformChannelSpecifics,
       );
+
+      // Batalkan notifikasi lama jika ada
       try {
         await flutterLocalNotificationsPlugin.cancel(notificationId);
       } catch (e) {}
 
+      // Periksa waktu lagi
       final scheduledTimeMillis = scheduledTimeZone.millisecondsSinceEpoch;
       final nowMillis = now.millisecondsSinceEpoch;
 
@@ -273,6 +313,7 @@ class NotificationService {
         return;
       }
 
+      // Jadwalkan notifikasi baru
       await flutterLocalNotificationsPlugin.zonedSchedule(
         notificationId,
         title,

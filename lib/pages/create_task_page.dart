@@ -1,3 +1,11 @@
+// ======= HALAMAN BUAT TUGAS =======
+// Halaman ini menangani pembuatan tugas baru oleh Project Manager
+// Fitur:
+// 1. Form pembuatan tugas dengan validasi lengkap
+// 2. Pemilihan tanggal dan waktu tugas
+// 3. Pemilihan PIC (Person In Charge)
+// 4. Integrasi dengan Firebase untuk penyimpanan data
+// 5. Notifikasi otomatis ke semua pihak terkait
 import 'package:flutter/material.dart';
 import '../models/task.dart';
 import '../data/dummy_tasks.dart';
@@ -14,8 +22,12 @@ class CreateTaskPage extends StatefulWidget {
 }
 
 class _CreateTaskPageState extends State<CreateTaskPage> {
+  // Key untuk form validasi
   final _formKey = GlobalKey<FormState>();
+  // Service untuk menangani notifikasi tugas
   final _taskNotificationService = TaskNotificationService();
+
+  // Variabel untuk menyimpan data form
   String _namaTugas = '';
   DateTime _tanggal = DateTime.now();
   String _jamMulai = '';
@@ -26,6 +38,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   TimeOfDay _selectedEndTime = TimeOfDay.now();
   bool _isLoading = false;
 
+  // Daftar opsi PIC yang tersedia
   final List<String> _picOptions = [
     'CPW',
     'CPP',
@@ -43,6 +56,12 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     super.initState();
   }
 
+  // ======= SUBMIT FORM =======
+  // Fungsi ini menangani proses submit form pembuatan tugas
+  // 1. Validasi semua input form
+  // 2. Menyimpan data tugas ke Firestore
+  // 3. Mengirim notifikasi ke semua pihak terkait
+  // 4. Menampilkan dialog sukses
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -50,6 +69,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
     _formKey.currentState!.save();
 
+    // Validasi jam mulai
     if (_jamMulai.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -60,6 +80,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       return;
     }
 
+    // Validasi jam selesai
     if (_jamSelesai.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -70,6 +91,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       return;
     }
 
+    // Validasi PIC
     if (_pic.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -85,6 +107,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     });
 
     try {
+      // Validasi nama tugas
       if (_namaTugas.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -95,14 +118,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         return;
       }
 
-      final startDateTime = DateTime(
-        _tanggal.year,
-        _tanggal.month,
-        _tanggal.day,
-        _selectedStartTime.hour,
-        _selectedStartTime.minute,
-      );
-
+      // Membuat objek tugas baru
       final task = Task(
         uid: null,
         namaTugas: _namaTugas,
@@ -114,13 +130,16 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         status: 'pending',
       );
 
+      // Menyimpan tugas ke Firestore
       final taskId = await addTask(task);
 
       if (taskId != null) {
+        // Mengirim notifikasi tugas baru
         final taskNotificationService = TaskNotificationService();
         await taskNotificationService.notifyNewTask(task);
 
         if (mounted) {
+          // Menampilkan dialog sukses
           await showDialog(
             context: context,
             barrierDismissible: false,
@@ -206,6 +225,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     }
   }
 
+  // ======= PILIH TANGGAL =======
+  // Fungsi untuk memilih tanggal tugas
+  // Menampilkan date picker dengan tema yang sesuai
   Future<void> _selectDate(BuildContext context) async {
     final picked = await showDatePicker(
       context: context,
@@ -230,6 +252,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     }
   }
 
+  // ======= PILIH WAKTU =======
+  // Fungsi untuk memilih waktu mulai/selesai tugas
+  // Menampilkan time picker dengan tema yang sesuai
   Future<void> _selectTime(BuildContext context, bool isStartTime) async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
@@ -263,6 +288,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // AppBar dengan judul dan tombol kembali
       appBar: AppBar(
         title: const Text('PM Create Task'),
         titleTextStyle: const TextStyle(
@@ -281,6 +307,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
+      // Body dengan gradient background
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -294,6 +321,16 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     );
   }
 
+  // ======= FORM TUGAS =======
+  // Widget untuk menampilkan form pembuatan tugas
+  // Terdiri dari:
+  // 1. Header dengan ikon dan judul
+  // 2. Input tanggal tugas
+  // 3. Input nama tugas
+  // 4. Input jam mulai dan selesai
+  // 5. Input nama PM
+  // 6. Pemilihan PIC
+  // 7. Tombol submit dan kembali
   Widget _buildTugasForm() {
     return Padding(
       padding: const EdgeInsets.all(20),
@@ -301,6 +338,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         key: _formKey,
         child: ListView(
           children: [
+            // Header Form
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -336,6 +374,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             ),
             const SizedBox(height: 24),
 
+            // Input Tanggal
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -398,6 +437,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             ),
             const SizedBox(height: 16),
 
+            // Input Nama Tugas
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -449,6 +489,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             ),
             const SizedBox(height: 16),
 
+            // Input Jam Mulai & Selesai
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -479,6 +520,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                     const SizedBox(height: 12),
                     Row(
                       children: [
+                        // Input Jam Mulai
                         Expanded(
                           child: InkWell(
                             onTap: () => _selectTime(context, true),
@@ -506,6 +548,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           ),
                         ),
                         const SizedBox(width: 12),
+                        // Input Jam Selesai
                         Expanded(
                           child: InkWell(
                             onTap: () => _selectTime(context, false),
@@ -542,6 +585,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             ),
             const SizedBox(height: 16),
 
+            // Input Nama PM
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -589,6 +633,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             ),
             const SizedBox(height: 16),
 
+            // Pemilihan PIC
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -613,6 +658,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                       ],
                     ),
                     const SizedBox(height: 12),
+                    // Daftar opsi PIC dalam bentuk chip
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
@@ -659,6 +705,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             ),
             const SizedBox(height: 24),
 
+            // Tombol Submit
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color.fromARGB(255, 33, 83, 36),
@@ -696,6 +743,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                       ),
             ),
             const SizedBox(height: 12),
+            // Tombol Kembali
             OutlinedButton(
               onPressed: _isLoading ? null : () => Navigator.pop(context),
               style: OutlinedButton.styleFrom(

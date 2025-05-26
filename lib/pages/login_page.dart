@@ -1,3 +1,10 @@
+// ======= LOGIN PAGE =======
+// Halaman ini menangani proses autentikasi pengguna
+// Fitur:
+// 1. Form login dengan validasi email dan password
+// 2. Integrasi dengan Firebase Authentication
+// 3. Penyimpanan FCM token untuk notifikasi
+// 4. Redirect ke halaman sesuai role pengguna (Admin, PM, PIC)
 import 'package:firebase_ui_auth/firebase_ui_auth.dart';
 import 'package:flutter/material.dart';
 import '../data/dummy_users.dart';
@@ -16,6 +23,7 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  // Controller untuk input email dan password
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   String? _emailErrorText;
@@ -29,6 +37,13 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  // ======= HANDLE LOGIN =======
+  // Fungsi ini menangani proses login pengguna
+  // 1. Validasi input email dan password
+  // 2. Autentikasi dengan Firebase
+  // 3. Menyimpan FCM token untuk notifikasi
+  // 4. Mendapatkan role pengguna
+  // 5. Redirect ke halaman sesuai role
   void _handleLogin() async {
     setState(() {
       _isLoading = true;
@@ -40,6 +55,7 @@ class _LoginPageState extends State<LoginPage> {
       final email = _emailController.text.trim();
       final password = _passwordController.text.trim();
 
+      // Validasi input kosong
       if (email.isEmpty || password.isEmpty) {
         setState(() {
           _emailErrorText = email.isEmpty ? "Email tidak boleh kosong" : null;
@@ -50,9 +66,11 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
+      // Autentikasi dengan Firebase
       final userCredential = await FirebaseAuth.instance
           .signInWithEmailAndPassword(email: email, password: password);
 
+      // Mendapatkan dan menyimpan FCM token
       final fcmToken = await FirebaseMessaging.instance.getToken();
 
       if (fcmToken != null) {
@@ -66,10 +84,12 @@ class _LoginPageState extends State<LoginPage> {
             }, SetOptions(merge: true));
       }
 
+      // Mendapatkan role pengguna
       final role = await getUserRole();
 
       if (!mounted) return;
 
+      // Redirect ke halaman sesuai role
       Widget nextPage;
       switch (role) {
         case 'admin':
@@ -90,6 +110,7 @@ class _LoginPageState extends State<LoginPage> {
         MaterialPageRoute(builder: (_) => nextPage),
       );
     } on FirebaseAuthException catch (e) {
+      // Handle error autentikasi
       setState(() {
         switch (e.code) {
           case 'user-not-found':
@@ -117,6 +138,11 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  // ======= GET USER ROLE =======
+  // Fungsi ini mengambil role pengguna dari Firestore
+  // 1. Mendapatkan email pengguna yang sedang login
+  // 2. Mencari dokumen user di Firestore
+  // 3. Mengembalikan role pengguna
   Future<String?> getUserRole() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -156,9 +182,11 @@ class _LoginPageState extends State<LoginPage> {
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Logo Kenongo
                 Center(
                   child: Image.asset('assets/kenongo_logos.png', height: 120),
                 ),
+                // Welcome Text
                 const Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -184,6 +212,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 const SizedBox(height: 40),
+                // Login Form Container
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -199,6 +228,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   child: Column(
                     children: [
+                      // Email Input Field
                       TextField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
@@ -218,6 +248,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       const SizedBox(height: 10),
+                      // Password Input Field
                       TextField(
                         controller: _passwordController,
                         obscureText: true,
@@ -237,6 +268,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       const SizedBox(height: 24),
+                      // Login Button
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(

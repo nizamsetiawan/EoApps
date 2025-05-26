@@ -11,7 +11,7 @@ class TaskNotificationService {
   final FCMService _fcmService = FCMService();
   final Set<String> _processedNotifications = {};
 
-  // Get all users with relevant roles (PM, PIC, Admin)
+  // Dapatkan semua user dengan role yang relevan (PM, PIC, Admin)
   Future<List<String>> _getRelevantUserIds() async {
     try {
       final usersQuery = await _firestore.collection('users').get();
@@ -23,12 +23,11 @@ class TaskNotificationService {
           .map((doc) => doc.id)
           .toList();
     } catch (e) {
-      print('Error getting relevant user IDs: $e');
       return [];
     }
   }
 
-  // Get first valid FCM token from relevant users
+  // Dapatkan token FCM pertama yang valid dari user yang relevan
   Future<Map<String, String?>> _getValidFCMToken() async {
     try {
       final usersQuery = await _firestore.collection('users').get();
@@ -36,7 +35,7 @@ class TaskNotificationService {
         final userData = doc.data();
         final role = userData['role'] as String?;
 
-        // Skip if user role is not relevant
+        // Lewati jika role tidak relevan
         if (role != 'pm' && role != 'pic' && role != 'admin') {
           continue;
         }
@@ -48,41 +47,33 @@ class TaskNotificationService {
       }
       return {'userId': null, 'token': null};
     } catch (e) {
-      print('Error getting valid FCM token: $e');
       return {'userId': null, 'token': null};
     }
   }
 
-  // Send FCM notification to all relevant users
+  // Kirim notifikasi FCM ke semua user yang relevan
   Future<void> _sendFCMToUsers({
     required String title,
     required String body,
     required Map<String, dynamic> data,
   }) async {
     try {
-      // Create unique notification ID
+      // Buat ID notifikasi unik
       final notificationId =
           '${data['type']}_${data['taskId']}_${DateTime.now().millisecondsSinceEpoch}';
 
-      // Check if notification was already processed
+      // Cek apakah notifikasi sudah diproses
       if (_processedNotifications.contains(notificationId)) {
-        print('Notification $notificationId already processed, skipping...');
         return;
       }
 
-      print('Sending notification to all relevant roles');
-      print('Title: $title');
-      print('Body: $body');
-      print('Data: $data');
-
-      // Get all tokens for all roles
+      // Dapatkan semua token untuk semua role
       final roleTokens = await _fcmService.getAllTokens();
-      print('Retrieved tokens by role: $roleTokens');
 
-      // Collect all user IDs for Firestore notification
+      // Kumpulkan semua ID user untuk notifikasi Firestore
       List<String> allUserIds = [];
 
-      // Send to all tokens
+      // Kirim ke semua token
       for (var role in roleTokens.keys) {
         for (var tokenData in roleTokens[role]!) {
           final token = tokenData['token'] as String;
@@ -90,23 +81,16 @@ class TaskNotificationService {
           final userId = tokenData['userId'] as String;
           allUserIds.add(userId);
 
-          print('Sending to role $role, email $email, userId $userId');
           final success = await FCMService.sendNotification(
             token: token,
             title: title,
             body: body,
             data: {...data, 'role': role, 'email': email, 'userId': userId},
           );
-
-          if (success) {
-            print('Successfully sent notification to $role with email $email');
-          } else {
-            print('Failed to send notification to $role with email $email');
-          }
         }
       }
 
-      // Save notification to Firestore
+      // Simpan notifikasi ke Firestore
       await _firestore.collection('notifications').add({
         'userIds': allUserIds,
         'title': title,
@@ -119,16 +103,12 @@ class TaskNotificationService {
         'notificationId': notificationId,
       });
 
-      // Add to processed notifications
+      // Tambahkan ke notifikasi yang sudah diproses
       _processedNotifications.add(notificationId);
-
-      print('Notification saved to Firestore for users: $allUserIds');
-    } catch (e) {
-      print('Error sending FCM to users: $e');
-    }
+    } catch (e) {}
   }
 
-  // Save notification to Firestore
+  // Simpan notifikasi ke Firestore
   Future<void> _saveNotificationToFirestore({
     required List<String> userIds,
     required String title,
@@ -149,11 +129,11 @@ class TaskNotificationService {
       };
       await _firestore.collection('notifications').add(notificationData);
     } catch (e) {
-      print('Error saving notification to Firestore: $e');
+      // Abaikan error
     }
   }
 
-  // Notify new task
+  // Notifikasi task baru
   Future<void> notifyNewTask(Task task) async {
     try {
       final taskStartTime = _parseTaskTime(task.tanggal, task.jamMulai);
@@ -164,7 +144,7 @@ class TaskNotificationService {
             task.uid ?? DateTime.now().millisecondsSinceEpoch.toString();
         final currentTimeFormatted = DateFormat('HH:mm').format(now);
 
-        // Send FCM notification for new task creation
+        // Kirim notifikasi FCM untuk task baru
         await _sendFCMToUsers(
           title: 'Task Baru Dibuat',
           body:
@@ -176,7 +156,7 @@ class TaskNotificationService {
           },
         );
 
-        // Schedule reminders
+        // Jadwalkan pengingat
         final reminderIntervals = [6, 4, 2];
         for (var minutesBeforeStart in reminderIntervals) {
           final reminderTime = startTime.subtract(
@@ -189,12 +169,7 @@ class TaskNotificationService {
                   .hashCode;
           final initialDelayReminder = reminderTime.difference(now);
 
-          print('Scheduling reminder for task ${task.namaTugas}:');
-          print('- Minutes before start: $minutesBeforeStart');
-          print('- Reminder time: $reminderTime');
-          print('- Initial delay: $initialDelayReminder');
-
-          // Schedule FCM reminder notification
+          // Jadwalkan notifikasi pengingat
           await Workmanager().registerOneOffTask(
             '${taskId}_reminder_${minutesBeforeStart}_${reminderTime.millisecondsSinceEpoch}',
             'taskNotificationTask',
@@ -220,16 +195,12 @@ class TaskNotificationService {
           );
         }
 
-        // Schedule start notification
+        // Jadwalkan notifikasi mulai
         if (startTime.isAfter(now)) {
           final startId = '${taskId}_start'.hashCode;
           final initialDelayStart = startTime.difference(now);
 
-          print('Scheduling start notification for task ${task.namaTugas}:');
-          print('- Start time: $startTime');
-          print('- Initial delay: $initialDelayStart');
-
-          // Schedule FCM start notification
+          // Jadwalkan notifikasi mulai
           await Workmanager().registerOneOffTask(
             '${taskId}_start_${startTime.millisecondsSinceEpoch}',
             'taskNotificationTask',
@@ -255,18 +226,18 @@ class TaskNotificationService {
         }
       }
     } catch (e) {
-      print('Error in notifyNewTask: $e');
+      // Abaikan error
     }
   }
 
-  // Notify status changed
+  // Notifikasi perubahan status
   Future<void> notifyStatusChanged(Task task, String newStatus) async {
     try {
       final notificationId =
           '${task.uid}_status_${DateTime.now().millisecondsSinceEpoch}'
               .hashCode;
 
-      // Send FCM notification
+      // Kirim notifikasi FCM
       await _sendFCMToUsers(
         title: 'Status Task Berubah',
         body: 'Status task "${task.namaTugas}" berubah menjadi "$newStatus"',
@@ -278,18 +249,18 @@ class TaskNotificationService {
         },
       );
     } catch (e) {
-      print('Error in notifyStatusChanged: $e');
+      // Abaikan error
     }
   }
 
-  // Notify add keterangan
+  // Notifikasi tambah keterangan
   Future<void> notifyAddKeterangan(Task task, String keterangan) async {
     try {
       final notificationId =
           '${task.uid}_keterangan_${DateTime.now().millisecondsSinceEpoch}'
               .hashCode;
 
-      // Send FCM notification
+      // Kirim notifikasi FCM
       await _sendFCMToUsers(
         title: 'Keterangan Ditambahkan',
         body: 'Keterangan pada task "${task.namaTugas}": $keterangan',
@@ -301,17 +272,17 @@ class TaskNotificationService {
         },
       );
     } catch (e) {
-      print('Error in notifyAddKeterangan: $e');
+      // Abaikan error
     }
   }
 
-  // Notify upload bukti
+  // Notifikasi upload bukti
   Future<void> notifyUploadBukti(Task task, String buktiUrl) async {
     try {
       final notificationId =
           '${task.uid}_bukti_${DateTime.now().millisecondsSinceEpoch}'.hashCode;
 
-      // Send FCM notification
+      // Kirim notifikasi FCM
       await _sendFCMToUsers(
         title: 'Bukti Diunggah',
         body: 'Bukti untuk task "${task.namaTugas}" telah berhasil diunggah.',
@@ -323,18 +294,18 @@ class TaskNotificationService {
         },
       );
     } catch (e) {
-      print('Error in notifyUploadBukti: $e');
+      // Abaikan error
     }
   }
 
-  // Notify task selesai
+  // Notifikasi task selesai
   Future<void> notifyTaskSelesai(Task task) async {
     try {
       final notificationId =
           '${task.uid}_selesai_${DateTime.now().millisecondsSinceEpoch}'
               .hashCode;
 
-      // Send FCM notification
+      // Kirim notifikasi FCM
       await _sendFCMToUsers(
         title: 'Task Selesai',
         body: 'Task "${task.namaTugas}" telah selesai.',
@@ -345,11 +316,11 @@ class TaskNotificationService {
         },
       );
     } catch (e) {
-      print('Error in notifyTaskSelesai: $e');
+      // Abaikan error
     }
   }
 
-  // Parse task time
+  // Parse waktu task
   DateTime? _parseTaskTime(DateTime date, String timeStr) {
     try {
       final timeParts = timeStr.split(':');
@@ -366,7 +337,7 @@ class TaskNotificationService {
     }
   }
 
-  // Process scheduled notification
+  // Proses notifikasi terjadwal
   Future<void> processScheduledNotification(
     Map<String, dynamic> notificationData,
   ) async {
@@ -378,19 +349,16 @@ class TaskNotificationService {
       final String? taskName = notificationData['taskName'] as String?;
 
       if (title != null && body != null && type != null) {
-        // Create unique notification ID for scheduled notifications
+        // Buat ID notifikasi unik untuk notifikasi terjadwal
         final notificationId =
             '${type}_${taskId}_${DateTime.now().millisecondsSinceEpoch}';
 
-        // Check if notification was already processed
+        // Cek apakah notifikasi sudah diproses
         if (_processedNotifications.contains(notificationId)) {
-          print(
-            'Scheduled notification $notificationId already processed, skipping...',
-          );
           return;
         }
 
-        // Send FCM notification
+        // Kirim notifikasi FCM
         await _sendFCMToUsers(
           title: title,
           body: body,
@@ -403,7 +371,7 @@ class TaskNotificationService {
         );
       }
     } catch (e) {
-      print('Error processing scheduled notification: $e');
+      // Abaikan error
     }
   }
 }

@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'notification_service.dart';
+import 'dart:async';
 
 class FCMService {
   static const String _serverUrl =
@@ -110,6 +111,15 @@ class FCMService {
         _saveTokenToFirestore(newToken);
       });
 
+      // Check token validity periodically
+      Timer.periodic(const Duration(hours: 1), (timer) async {
+        final currentToken = await _messaging.getToken();
+        if (currentToken != null) {
+          print('Memeriksa validitas token FCM...');
+          await _saveTokenToFirestore(currentToken);
+        }
+      });
+
       print('Inisialisasi FCM selesai');
     } catch (e) {
       print('Error saat inisialisasi FCM: $e');
@@ -135,7 +145,7 @@ class FCMService {
   // Handle notification tap
   void _handleNotificationTap(RemoteMessage message) {
     print('Notification tapped: ${message.messageId}');
-    print('Notification data: ${message.data}');
+    print('Notificatio data: ${message.data}');
     // Handle navigation or other actions when notification is tapped
   }
 

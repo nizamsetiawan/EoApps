@@ -1,11 +1,14 @@
 // =========== IMPORT =============
+// Import library yang diperlukan untuk halaman admin
 import 'package:flutter/material.dart';
 import '../models/task.dart';
 import '../data/dummy_tasks.dart';
 import 'login_page.dart'; // pastikan ini sesuai struktur project kamu
 import '../data/dummy_data_client.dart';
+import '../services/task_notification_service.dart';
 
 // =========== ADMIN HOME PAGE CLASS =============
+// Kelas utama untuk halaman admin yang menangani semua fungsionalitas admin
 class AdminHomePage extends StatefulWidget {
   const AdminHomePage({super.key});
 
@@ -15,8 +18,12 @@ class AdminHomePage extends StatefulWidget {
 
 class AdminHomePageState extends State<AdminHomePage> {
   // =========== VARIABEL =============
+  // Variabel untuk mengontrol halaman yang sedang aktif
   String _currentPage = 'menu';
+  // Key untuk validasi form
   final _formKey = GlobalKey<FormState>();
+
+  // Variabel untuk menyimpan data form tugas
   String _namaTugas = '';
   DateTime _tanggal = DateTime.now();
   String _jamMulai = '';
@@ -28,7 +35,7 @@ class AdminHomePageState extends State<AdminHomePage> {
   bool _isLoading = false;
   List<DataClient> _realClient = [];
 
-  // Form controllers for client data
+  // Controller untuk input data client
   final _cpwController = TextEditingController();
   final _cppController = TextEditingController();
   final _dekorasiController = TextEditingController();
@@ -39,7 +46,7 @@ class AdminHomePageState extends State<AdminHomePage> {
   final _mcController = TextEditingController();
   final _bandController = TextEditingController();
 
-  // Predefined PIC options
+  // Daftar opsi PIC yang tersedia
   final List<String> _picOptions = [
     'CPW',
     'CPP',
@@ -55,11 +62,12 @@ class AdminHomePageState extends State<AdminHomePage> {
   @override
   void initState() {
     super.initState();
-    _loadDataClients();
+    _loadDataClients(); // Memuat data client saat halaman dibuka
   }
 
   @override
   void dispose() {
+    // Membersihkan controller saat widget dihapus
     _cpwController.dispose();
     _cppController.dispose();
     _dekorasiController.dispose();
@@ -72,6 +80,7 @@ class AdminHomePageState extends State<AdminHomePage> {
     super.dispose();
   }
 
+  // Fungsi untuk memuat data client dari Firestore
   void _loadDataClients() async {
     final dataClients = await getDataClients();
     setState(() {
@@ -80,10 +89,12 @@ class AdminHomePageState extends State<AdminHomePage> {
   }
 
   // =========== SUBMIT FORM =============
+  // Fungsi untuk menangani submit form pembuatan tugas
   Future<void> _submitForm() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
 
+      // Validasi input form
       if (_namaTugas.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -139,6 +150,7 @@ class AdminHomePageState extends State<AdminHomePage> {
       });
 
       try {
+        // Membuat objek tugas baru
         final task = Task(
           uid: null,
           namaTugas: _namaTugas,
@@ -150,76 +162,39 @@ class AdminHomePageState extends State<AdminHomePage> {
           status: 'pending',
         );
 
-        await addTask(task);
+        // Menyimpan tugas ke Firestore
+        final taskId = await addTask(task);
 
-        if (mounted) {
-          await showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder:
-                (_) => AlertDialog(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  title: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        "Sukses",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Color.fromARGB(255, 33, 83, 36),
-                        ),
-                      ),
-                      const Icon(
-                        Icons.check_circle,
-                        color: Colors.green,
-                        size: 28,
-                      ),
-                    ],
-                  ),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        "Tugas berhasil dibuat!",
-                        style: TextStyle(fontSize: 16),
-                      ),
-                      const SizedBox(height: 20),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color.fromARGB(
-                            255,
-                            33,
-                            83,
-                            36,
-                          ),
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size(double.infinity, 45),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
+        if (taskId != null) {
+          // Mengirim notifikasi tugas baru
+          final taskNotificationService = TaskNotificationService();
+          await taskNotificationService.notifyNewTask(task);
+
+          // Tampilkan dialog sukses
+          if (mounted) {
+            showDialog(
+              context: context,
+              builder:
+                  (context) => AlertDialog(
+                    title: const Text('Sukses'),
+                    content: const Text('Task berhasil dibuat'),
+                    actions: [
+                      TextButton(
                         onPressed: () {
-                          Navigator.pop(context); // Tutup dialog
-                          setState(
-                            () => _currentPage = 'menu',
-                          ); // Kembali ke menu
+                          Navigator.pop(context);
+                          setState(() {
+                            _currentPage = 'menu';
+                          });
                         },
-                        child: const Text(
-                          "Kembali",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        child: const Text('OK'),
                       ),
                     ],
                   ),
-                ),
-          );
+            );
+          }
         }
       } catch (e) {
+        // Menampilkan pesan error jika terjadi kesalahan
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -239,6 +214,7 @@ class AdminHomePageState extends State<AdminHomePage> {
   }
 
   // =========== DATE PICKER =============
+  // Fungsi untuk memilih tanggal tugas
   Future<void> _selectDate(BuildContext context) async {
     final picked = await showDatePicker(
       context: context,
@@ -263,6 +239,7 @@ class AdminHomePageState extends State<AdminHomePage> {
     }
   }
 
+  // Fungsi untuk memilih waktu mulai/selesai
   Future<void> _selectTime(BuildContext context, bool isStartTime) async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
@@ -294,6 +271,7 @@ class AdminHomePageState extends State<AdminHomePage> {
   }
 
   // =========== SUBMIT CLIENT FORM =============
+  // Fungsi untuk menangani submit form data client
   Future<void> _submitClientForm() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
@@ -301,6 +279,7 @@ class AdminHomePageState extends State<AdminHomePage> {
       });
 
       try {
+        // Membuat objek client baru
         final client = DataClient(
           cpw: _cpwController.text,
           cpp: _cppController.text,
@@ -313,6 +292,7 @@ class AdminHomePageState extends State<AdminHomePage> {
           band: _bandController.text,
         );
 
+        // Menyimpan data client ke Firestore
         await addDataClient(client);
 
         if (mounted) {
@@ -384,6 +364,7 @@ class AdminHomePageState extends State<AdminHomePage> {
           );
         }
       } catch (e) {
+        // Menampilkan pesan error jika terjadi kesalahan
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -403,6 +384,7 @@ class AdminHomePageState extends State<AdminHomePage> {
   }
 
   // =========== MENU UTAMA ============
+  // Widget untuk menampilkan menu utama admin
   Widget _buildMenuUtama() {
     return Center(
       child: SingleChildScrollView(
@@ -411,7 +393,7 @@ class AdminHomePageState extends State<AdminHomePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Header Section
+              // Header Section - Menampilkan judul dan ikon admin
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -451,7 +433,7 @@ class AdminHomePageState extends State<AdminHomePage> {
               ),
               const SizedBox(height: 40),
 
-              // Menu Grid
+              // Menu Grid - Menampilkan menu-menu yang tersedia
               Container(
                 constraints: const BoxConstraints(maxWidth: 600),
                 child: Column(
@@ -497,6 +479,7 @@ class AdminHomePageState extends State<AdminHomePage> {
     );
   }
 
+  // Widget untuk membuat card menu
   Widget _buildMenuCard({
     required IconData icon,
     required String title,

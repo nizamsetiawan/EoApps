@@ -10,42 +10,44 @@ import 'package:workmanager/workmanager.dart';
 import 'services/task_notification_service.dart';
 import 'services/fcm_service.dart';
 
+// Handler untuk menangani pesan saat aplikasi di background
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  print('Handling a background message: ${message.messageId}');
-  print('Background message data: ${message.data}');
-  print('Background message notification: ${message.notification?.title}');
 
+  // Inisialisasi service notifikasi
   final NotificationService notificationService = NotificationService();
   await notificationService.initialize();
 
+  // Tampilkan notifikasi jika ada
   if (message.notification != null) {
     await notificationService.showNotification(
       id: message.hashCode,
-      title: message.notification!.title ?? 'New Notification',
+      title: message.notification!.title ?? 'Notifikasi Baru',
       body: message.notification!.body ?? '',
       payload: message.data['taskId'] ?? '',
     );
-    print('Background notification displayed');
   }
 }
 
-// Entry point for background tasks managed by Workmanager
+// Entry point untuk background tasks yang dikelola oleh Workmanager
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((taskName, inputData) async {
     WidgetsFlutterBinding.ensureInitialized();
 
+    // Inisialisasi Firebase jika belum ada
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
     }
 
+    // Inisialisasi service notifikasi
     final NotificationService notificationService = NotificationService();
     await notificationService.initialize();
 
+    // Proses task notifikasi terjadwal
     switch (taskName) {
       case "taskNotificationTask":
         final taskNotificationService = TaskNotificationService();
@@ -62,24 +64,27 @@ void callbackDispatcher() {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Inisialisasi Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Setup background message handler
+  // Atur handler untuk pesan background
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  // Initialize Workmanager
+  // Inisialisasi Workmanager untuk notifikasi terjadwal
   Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
 
+  // Inisialisasi service notifikasi
   final notificationService = NotificationService();
   await notificationService.initialize();
 
-  // Initialize FCM Service
+  // Inisialisasi service FCM
   final fcmService = FCMService();
   await fcmService.initialize();
 
   runApp(const TaskSchedulingApp());
 }
 
+// Widget utama aplikasi
 class TaskSchedulingApp extends StatelessWidget {
   const TaskSchedulingApp({super.key});
 

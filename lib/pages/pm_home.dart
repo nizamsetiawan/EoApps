@@ -14,6 +14,7 @@ import 'dart:math' show max;
 import '../models/notification.dart';
 import 'package:intl/intl.dart';
 import '../services/task_notification_service.dart';
+import 'completed_tasks_page.dart';
 
 class PMHomePage extends StatefulWidget {
   final String role;
@@ -574,6 +575,14 @@ class _PMHomePageState extends State<PMHomePage> {
     );
   }
 
+  // ======= TASK PAGE =======
+  // Halaman ini menampilkan daftar task untuk tanggal yang dipilih
+  // Fitur:
+  // 1. Pemilihan tanggal dengan calendar picker
+  // 2. Tampilan task dalam bentuk card dengan status dan detail
+  // 3. Update status task (not complete, pending, done)
+  // 4. Tambah keterangan untuk task
+  // 5. Upload bukti untuk task
   List<Widget> _buildTaskList() {
     return [
       StreamBuilder<List<Task>>(
@@ -590,6 +599,7 @@ class _PMHomePageState extends State<PMHomePage> {
           final tasks = snapshot.data!;
           tasks.sort((b, a) => a.jamMulai.compareTo(b.jamMulai));
 
+          // Tampilkan pesan jika tidak ada task
           if (tasks.isEmpty) {
             return Center(
               child: Column(
@@ -614,6 +624,7 @@ class _PMHomePageState extends State<PMHomePage> {
             );
           }
 
+          // Tampilkan daftar task
           return ListView(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -1462,7 +1473,6 @@ class _PMHomePageState extends State<PMHomePage> {
         }
 
         final tasks = snapshot.data!;
-
         final totalTasks = tasks.length;
         final notCompleteTasks =
             tasks.where((t) => t.status == 'not complete').length;
@@ -1476,23 +1486,17 @@ class _PMHomePageState extends State<PMHomePage> {
             _isDateRangeMode ? _endDate.difference(_startDate).inDays + 1 : 1;
         final avgTasksPerDay = totalTasks / daysDiff;
 
-        double totalCompletionTime = 0;
-        int completedTasksCount = 0;
-        for (var task in tasks) {
-          if (task.status == 'done') {
-            final startTime = _parseTime(task.jamMulai);
-            final endTime = _parseTime(task.jamSelesai);
-            if (startTime != null && endTime != null) {
-              totalCompletionTime +=
-                  endTime.difference(startTime).inHours.toDouble();
-              completedTasksCount++;
-            }
-          }
-        }
-        final avgCompletionTime =
-            completedTasksCount > 0
-                ? totalCompletionTime / completedTasksCount
-                : 0;
+        final completedTasks =
+            tasks
+                .where(
+                  (task) =>
+                      task.status == 'done' &&
+                      task.bukti != null &&
+                      task.bukti!.isNotEmpty &&
+                      task.keterangan != null &&
+                      task.keterangan!.isNotEmpty,
+                )
+                .toList();
 
         final tasksByPIC = <String, int>{};
         for (var task in tasks) {
@@ -1517,90 +1521,32 @@ class _PMHomePageState extends State<PMHomePage> {
                     ),
                   ],
                 ),
-                child: Column(
-                  children: [
-                    const Icon(Icons.analytics, size: 50, color: Colors.white),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Task Recap',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _isDateRangeMode
-                          ? 'Range: ${_startDate.day}/${_startDate.month}/${_startDate.year} - ${_endDate.day}/${_endDate.month}/${_endDate.year}'
-                          : 'Tanggal: ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Colors.white70,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            setState(() {
-                              _isDateRangeMode = !_isDateRangeMode;
-                            });
-                          },
-                          icon: Icon(
-                            _isDateRangeMode
-                                ? Icons.calendar_today
-                                : Icons.date_range,
-                          ),
-                          label: Text(
-                            _isDateRangeMode ? 'Single Date' : 'Date Range',
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: const Color.fromARGB(
-                              255,
-                              33,
-                              83,
-                              36,
-                            ),
-                          ),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.analytics, size: 50, color: Colors.white),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Task Recap',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
-                        const SizedBox(width: 8),
-                        if (_isDateRangeMode)
-                          ElevatedButton.icon(
-                            onPressed: () => _selectDateRange(context),
-                            icon: const Icon(Icons.edit_calendar),
-                            label: const Text('Select Range'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: const Color.fromARGB(
-                                255,
-                                33,
-                                83,
-                                36,
-                              ),
-                            ),
-                          )
-                        else
-                          ElevatedButton.icon(
-                            onPressed: () => _selectDate(context),
-                            icon: const Icon(Icons.calendar_today),
-                            label: const Text('Select Date'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: const Color.fromARGB(
-                                255,
-                                33,
-                                83,
-                                36,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _isDateRangeMode
+                            ? 'Range: ${_startDate.day}/${_startDate.month}/${_startDate.year} - ${_endDate.day}/${_endDate.month}/${_endDate.year}'
+                            : 'Tanggal: ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -1632,10 +1578,21 @@ class _PMHomePageState extends State<PMHomePage> {
                     Colors.orange,
                   ),
                   _buildStatCard(
-                    'Avg Completion Time',
-                    '${avgCompletionTime.toStringAsFixed(1)}h',
-                    Icons.timer,
+                    'Task Selesai',
+                    '${completedTasks.length}',
+                    Icons.task_alt,
                     Colors.purple,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => CompletedTasksPage(
+                                completedTasks: completedTasks,
+                              ),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -1807,49 +1764,6 @@ class _PMHomePageState extends State<PMHomePage> {
     );
   }
 
-  Widget _buildStatCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 4),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                value,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
-              ),
-            ),
-            const SizedBox(height: 2),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                title,
-                style: const TextStyle(fontSize: 11, color: Colors.grey),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildLegendItem(String label, Color color) {
     return Row(
       children: [
@@ -1864,9 +1778,17 @@ class _PMHomePageState extends State<PMHomePage> {
     );
   }
 
+  // ======= NOTIFICATION PAGE =======
+  // Halaman ini menampilkan daftar notifikasi yang diterima user
+  // Fitur:
+  // 1. Filter notifikasi berdasarkan tipe (Task Baru, Pengingat, Status Berubah, dll)
+  // 2. Menampilkan notifikasi dalam bentuk card dengan icon dan warna yang sesuai
+  // 3. Dapat menghapus notifikasi dengan swipe
+  // 4. Menampilkan timestamp notifikasi
   Widget _buildNotificationsPage() {
     return Column(
       children: [
+        // Filter dropdown untuk memfilter notifikasi
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: Row(
@@ -1909,6 +1831,7 @@ class _PMHomePageState extends State<PMHomePage> {
             ],
           ),
         ),
+        // Stream builder untuk menampilkan notifikasi real-time dari Firestore
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
             stream:
@@ -1927,7 +1850,6 @@ class _PMHomePageState extends State<PMHomePage> {
               }
 
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                if (snapshot.hasError) {}
                 return const Center(
                   child: Text(
                     'Belum ada notifikasi',
@@ -1936,6 +1858,7 @@ class _PMHomePageState extends State<PMHomePage> {
                 );
               }
 
+              // Filter notifikasi berdasarkan tipe yang dipilih
               var filteredDocs =
                   snapshot.data!.docs.where((doc) {
                     final data = doc.data() as Map<String, dynamic>;
@@ -1968,6 +1891,7 @@ class _PMHomePageState extends State<PMHomePage> {
                 );
               }
 
+              // Tampilkan daftar notifikasi yang sudah difilter
               return ListView.builder(
                 padding: const EdgeInsets.all(16),
                 itemCount: filteredDocs.length,
@@ -1985,6 +1909,13 @@ class _PMHomePageState extends State<PMHomePage> {
     );
   }
 
+  // Widget untuk menampilkan card notifikasi
+  // Menampilkan:
+  // 1. Icon sesuai tipe notifikasi
+  // 2. Judul notifikasi
+  // 3. Isi notifikasi
+  // 4. Waktu notifikasi
+  // 5. Opsi untuk menghapus notifikasi dengan swipe
   Widget _buildNotificationCard(NotificationModel notification) {
     IconData iconData;
     Color iconColor;
@@ -2349,6 +2280,53 @@ class _PMHomePageState extends State<PMHomePage> {
         ),
       ),
       bottomNavigationBar: _buildCustomBottomNavigationBar(),
+    );
+  }
+
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color, {
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 24),
+              const SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 2),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  title,
+                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

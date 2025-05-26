@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/task.dart';
 import '../data/dummy_tasks.dart';
-import '../services/notification_service.dart';
 import '../services/task_notification_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -16,7 +15,7 @@ class CreateTaskPage extends StatefulWidget {
 
 class _CreateTaskPageState extends State<CreateTaskPage> {
   final _formKey = GlobalKey<FormState>();
-  final _notificationService = NotificationService();
+  final _taskNotificationService = TaskNotificationService();
   String _namaTugas = '';
   DateTime _tanggal = DateTime.now();
   String _jamMulai = '';
@@ -120,22 +119,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       if (taskId != null) {
         final taskNotificationService = TaskNotificationService();
         await taskNotificationService.notifyNewTask(task);
-
-        final maxReminders = 3;
-        final startTime = startDateTime;
-
-        for (int i = 1; i <= maxReminders; i++) {
-          final reminderTime = startTime.subtract(Duration(minutes: 2 * i));
-
-          if (reminderTime.isAfter(DateTime.now())) {
-            await _notificationService.scheduleTaskNotification(
-              title: 'Pengingat Task',
-              body: 'Task "$_namaTugas" akan dimulai dalam ${2 * i} menit',
-              scheduledTime: reminderTime,
-              notificationId: '${_namaTugas}_reminder_$i'.hashCode,
-            );
-          }
-        }
 
         if (mounted) {
           await showDialog(

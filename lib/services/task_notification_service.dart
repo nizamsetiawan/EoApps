@@ -1,5 +1,4 @@
 import '../models/task.dart';
-import 'notification_service.dart';
 import 'fcm_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -8,9 +7,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 class TaskNotificationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final NotificationService _notificationService = NotificationService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FCMService _fcmService = FCMService();
+  final Set<String> _processedNotifications = {};
 
   // Get all users with relevant roles (PM, PIC, Admin)
   Future<List<String>> _getRelevantUserIds() async {
@@ -61,6 +60,16 @@ class TaskNotificationService {
     required Map<String, dynamic> data,
   }) async {
     try {
+      // Create unique notification ID
+      final notificationId =
+          '${data['type']}_${data['taskId']}_${DateTime.now().millisecondsSinceEpoch}';
+
+      // Check if notification was already processed
+      if (_processedNotifications.contains(notificationId)) {
+        print('Notification $notificationId already processed, skipping...');
+        return;
+      }
+
       print('Sending notification to all relevant roles');
       print('Title: $title');
       print('Body: $body');
@@ -107,7 +116,11 @@ class TaskNotificationService {
         'taskName': data['taskName'],
         'timestamp': FieldValue.serverTimestamp(),
         'read': false,
+        'notificationId': notificationId,
       });
+
+      // Add to processed notifications
+      _processedNotifications.add(notificationId);
 
       print('Notification saved to Firestore for users: $allUserIds');
     } catch (e) {
@@ -151,16 +164,7 @@ class TaskNotificationService {
             task.uid ?? DateTime.now().millisecondsSinceEpoch.toString();
         final currentTimeFormatted = DateFormat('HH:mm').format(now);
 
-        // Show local notification
-        await _notificationService.showNotification(
-          id: taskId.hashCode + 1000000,
-          title: 'Task Baru Dibuat',
-          body:
-              'Task "${task.namaTugas}" dibuat pada $currentTimeFormatted, dijadwalkan mulai ${task.jamMulai} tanggal ${task.tanggal.toString().split(' ')[0]}',
-          payload: taskId,
-        );
-
-        // Send FCM notification
+        // Send FCM notification for new task creation
         await _sendFCMToUsers(
           title: 'Task Baru Dibuat',
           body:
@@ -185,10 +189,23 @@ class TaskNotificationService {
                   .hashCode;
           final initialDelayReminder = reminderTime.difference(now);
 
+          print('Scheduling reminder for task ${task.namaTugas}:');
+          print('- Minutes before start: $minutesBeforeStart');
+          print('- Reminder time: $reminderTime');
+          print('- Initial delay: $initialDelayReminder');
+
+          // Schedule FCM reminder notification
           await Workmanager().registerOneOffTask(
             '${taskId}_reminder_${minutesBeforeStart}_${reminderTime.millisecondsSinceEpoch}',
             'taskNotificationTask',
             initialDelay: initialDelayReminder,
+            constraints: Constraints(
+              networkType: NetworkType.connected,
+              requiresBatteryNotLow: true,
+              requiresCharging: false,
+              requiresDeviceIdle: false,
+              requiresStorageNotLow: false,
+            ),
             inputData: {
               'id': reminderId,
               'title': 'Pengingat Task',
@@ -198,6 +215,7 @@ class TaskNotificationService {
               'type': 'reminder',
               'taskId': taskId,
               'taskName': task.namaTugas,
+              'minutesBeforeStart': minutesBeforeStart,
             },
           );
         }
@@ -207,10 +225,22 @@ class TaskNotificationService {
           final startId = '${taskId}_start'.hashCode;
           final initialDelayStart = startTime.difference(now);
 
+          print('Scheduling start notification for task ${task.namaTugas}:');
+          print('- Start time: $startTime');
+          print('- Initial delay: $initialDelayStart');
+
+          // Schedule FCM start notification
           await Workmanager().registerOneOffTask(
             '${taskId}_start_${startTime.millisecondsSinceEpoch}',
             'taskNotificationTask',
             initialDelay: initialDelayStart,
+            constraints: Constraints(
+              networkType: NetworkType.connected,
+              requiresBatteryNotLow: true,
+              requiresCharging: false,
+              requiresDeviceIdle: false,
+              requiresStorageNotLow: false,
+            ),
             inputData: {
               'id': startId,
               'title': 'Task Dimulai',
@@ -236,14 +266,6 @@ class TaskNotificationService {
           '${task.uid}_status_${DateTime.now().millisecondsSinceEpoch}'
               .hashCode;
 
-      // Show local notification
-      await _notificationService.showNotification(
-        id: notificationId,
-        title: 'Status Task Berubah',
-        body: 'Status task "${task.namaTugas}" berubah menjadi "$newStatus"',
-        payload: task.uid ?? '',
-      );
-
       // Send FCM notification
       await _sendFCMToUsers(
         title: 'Status Task Berubah',
@@ -267,14 +289,6 @@ class TaskNotificationService {
           '${task.uid}_keterangan_${DateTime.now().millisecondsSinceEpoch}'
               .hashCode;
 
-      // Show local notification
-      await _notificationService.showNotification(
-        id: notificationId,
-        title: 'Keterangan Ditambahkan',
-        body: 'Keterangan pada task "${task.namaTugas}": $keterangan',
-        payload: task.uid ?? '',
-      );
-
       // Send FCM notification
       await _sendFCMToUsers(
         title: 'Keterangan Ditambahkan',
@@ -296,14 +310,6 @@ class TaskNotificationService {
     try {
       final notificationId =
           '${task.uid}_bukti_${DateTime.now().millisecondsSinceEpoch}'.hashCode;
-
-      // Show local notification
-      await _notificationService.showNotification(
-        id: notificationId,
-        title: 'Bukti Diunggah',
-        body: 'Bukti untuk task "${task.namaTugas}" telah berhasil diunggah.',
-        payload: task.uid ?? '',
-      );
 
       // Send FCM notification
       await _sendFCMToUsers(
@@ -327,14 +333,6 @@ class TaskNotificationService {
       final notificationId =
           '${task.uid}_selesai_${DateTime.now().millisecondsSinceEpoch}'
               .hashCode;
-
-      // Show local notification
-      await _notificationService.showNotification(
-        id: notificationId,
-        title: 'Task Selesai',
-        body: 'Task "${task.namaTugas}" telah selesai.',
-        payload: task.uid ?? '',
-      );
 
       // Send FCM notification
       await _sendFCMToUsers(
@@ -373,22 +371,24 @@ class TaskNotificationService {
     Map<String, dynamic> notificationData,
   ) async {
     try {
-      final int? id = notificationData['id'] as int?;
       final String? title = notificationData['title'] as String?;
       final String? body = notificationData['body'] as String?;
-      final String? payload = notificationData['payload'] as String?;
       final String? type = notificationData['type'] as String?;
       final String? taskId = notificationData['taskId'] as String?;
       final String? taskName = notificationData['taskName'] as String?;
 
-      if (id != null && title != null && body != null && type != null) {
-        // Show local notification
-        await _notificationService.showNotification(
-          id: id,
-          title: title,
-          body: body,
-          payload: payload ?? '',
-        );
+      if (title != null && body != null && type != null) {
+        // Create unique notification ID for scheduled notifications
+        final notificationId =
+            '${type}_${taskId}_${DateTime.now().millisecondsSinceEpoch}';
+
+        // Check if notification was already processed
+        if (_processedNotifications.contains(notificationId)) {
+          print(
+            'Scheduled notification $notificationId already processed, skipping...',
+          );
+          return;
+        }
 
         // Send FCM notification
         await _sendFCMToUsers(
@@ -398,6 +398,7 @@ class TaskNotificationService {
             'type': type,
             'taskId': taskId ?? '',
             'taskName': taskName ?? '',
+            'notificationId': notificationId,
           },
         );
       }

@@ -275,6 +275,44 @@ class _PICHomePageState extends State<PICHomePage> {
     }
   }
 
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color.fromARGB(255, 33, 83, 36),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.person, size: 50, color: Colors.white),
+          const SizedBox(height: 16),
+          Text(
+            widget.role,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            widget.role == 'ACARA'
+                ? 'Melihat semua tugas acara'
+                : 'Melihat tugas ${widget.role}',
+            style: const TextStyle(fontSize: 16, color: Colors.white70),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMenuUtama() {
     return Center(
       child: SingleChildScrollView(
@@ -283,42 +321,7 @@ class _PICHomePageState extends State<PICHomePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: const Color.fromARGB(255, 33, 83, 36),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 10,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    const Icon(Icons.person, size: 50, color: Colors.white),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Selamat Datang',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Color.fromARGB(255, 33, 83, 36),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'PIC ${widget.role}',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              _buildHeader(),
               const SizedBox(height: 30),
 
               Row(
@@ -2312,5 +2315,61 @@ class _PICHomePageState extends State<PICHomePage> {
       ),
       bottomNavigationBar: _buildCustomBottomNavigationBar(),
     );
+  }
+
+  Stream<List<Task>> getTasksStream(DateTime selectedDate) {
+    final startOfDay = DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+      0,
+      0,
+      0,
+    );
+
+    final endOfDay = DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day + 1,
+      0,
+      0,
+      0,
+    );
+
+    // Validasi role
+    final List<String> validRoles = [
+      'ACARA',
+      'Souvenir',
+      'CPW',
+      'CPP',
+      'Registrasi',
+      'Dekorasi',
+      'Catering',
+      'FOH',
+      'Runner',
+      'Talent',
+    ];
+
+    if (!validRoles.contains(widget.role)) {
+      throw Exception('Invalid role: ${widget.role}');
+    }
+
+    // Query dasar untuk tanggal
+    var query = FirebaseFirestore.instance
+        .collection('tasks')
+        .where(
+          'tanggal',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
+        )
+        .where('tanggal', isLessThan: Timestamp.fromDate(endOfDay));
+
+    // Jika bukan ACARA, tambahkan filter berdasarkan role
+    if (widget.role != 'ACARA') {
+      query = query.where('pic', isEqualTo: widget.role);
+    }
+
+    return query.snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) => Task.fromFirestore(doc)).toList();
+    });
   }
 }

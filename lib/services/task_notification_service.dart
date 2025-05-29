@@ -157,10 +157,11 @@ class TaskNotificationService {
         );
 
         // Jadwalkan pengingat
-        final reminderIntervals = [6, 4, 2];
+        final reminderIntervals = [6, 4, 2]; // dalam menit
         for (var minutesBeforeStart in reminderIntervals) {
+          // Tambahkan margin 1 menit untuk memastikan notifikasi muncul tepat waktu
           final reminderTime = startTime.subtract(
-            Duration(minutes: minutesBeforeStart),
+            Duration(minutes: minutesBeforeStart + 1),
           );
           if (!reminderTime.isAfter(now)) continue;
 
@@ -169,14 +170,15 @@ class TaskNotificationService {
                   .hashCode;
           final initialDelayReminder = reminderTime.difference(now);
 
-          // Jadwalkan notifikasi pengingat
+          // Jadwalkan notifikasi pengingat dengan prioritas tinggi
           await Workmanager().registerOneOffTask(
             '${taskId}_reminder_${minutesBeforeStart}_${reminderTime.millisecondsSinceEpoch}',
             'taskNotificationTask',
             initialDelay: initialDelayReminder,
             constraints: Constraints(
               networkType: NetworkType.connected,
-              requiresBatteryNotLow: true,
+              requiresBatteryNotLow:
+                  false, // Ubah ke false agar tetap berjalan meski baterai rendah
               requiresCharging: false,
               requiresDeviceIdle: false,
               requiresStorageNotLow: false,

@@ -71,17 +71,24 @@ class _LoginPageState extends State<LoginPage> {
           .signInWithEmailAndPassword(email: email, password: password);
 
       // Mendapatkan dan menyimpan FCM token
+      // menambnhakan firebase ma
       final fcmToken = await FirebaseMessaging.instance.getToken();
 
       if (fcmToken != null) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userCredential.user!.uid)
-            .set({
-              'email': email,
-              'fcmToken': fcmToken,
-              'lastLogin': FieldValue.serverTimestamp(),
-            }, SetOptions(merge: true));
+        // Cari user berdasarkan email
+        final userQuery =
+            await FirebaseFirestore.instance
+                .collection('users')
+                .where('email', isEqualTo: email)
+                .get();
+
+        if (userQuery.docs.isNotEmpty) {
+          // Update fcmToken dan lastLogin untuk user yang ditemukan
+          await userQuery.docs.first.reference.update({
+            'fcmToken': fcmToken,
+            'lastLogin': FieldValue.serverTimestamp(),
+          });
+        }
       }
 
       // Mendapatkan role pengguna
@@ -91,6 +98,10 @@ class _LoginPageState extends State<LoginPage> {
 
       // Redirect ke halaman sesuai role
       Widget nextPage;
+      if (role == null) {
+        throw Exception('Role not found');
+      }
+
       switch (role) {
         case 'admin':
           nextPage = const AdminHomePage();
@@ -98,8 +109,19 @@ class _LoginPageState extends State<LoginPage> {
         case 'pm':
           nextPage = PMHomePage(role: 'pm');
           break;
-        case 'pic':
-          nextPage = PICHomePage(role: 'PIC Registrasi');
+        case 'ACARA':
+          nextPage = PICHomePage(role: role);
+          break;
+        case 'Souvenir':
+        case 'CPW':
+        case 'CPP':
+        case 'Registrasi':
+        case 'Dekorasi':
+        case 'Catering':
+        case 'FOH':
+        case 'Runner':
+        case 'Talent':
+          nextPage = PICHomePage(role: role);
           break;
         default:
           throw Exception('Invalid role: $role');
@@ -164,7 +186,7 @@ class _LoginPageState extends State<LoginPage> {
           return data['role'] as String;
         }
       }
-      throw Exception('Role not found for user: $email');
+      throw Exception('Role not fund for user: $email');
     } catch (e) {
       rethrow;
     }

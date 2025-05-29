@@ -14,10 +14,10 @@ class FCMService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final Set<String> _processedMessageIds = {};
 
-  // Inisialisasi FCM
+  // Inisialisasi FC
   Future<void> initialize() async {
     try {
-      print('Memulai inisialisasi FCM...');
+      print('Memulai inisialisasi FCM..');
 
       // Request permission dengan opsi yang lebih lengkap
       final settings = await _messaging.requestPermission(

@@ -48,15 +48,15 @@ class AdminHomePageState extends State<AdminHomePage> {
 
   // Daftar opsi PIC yang tersedia
   final List<String> _picOptions = [
-    'CPW',
-    'CPP',
+    'Registrasi',
+    'Runner',
     'Dekorasi',
-    'MUA',
-    'Dokumentasi',
     'Catering',
     'Souvenir',
-    'MC',
-    'Band',
+    'CPW',
+    'CPP',
+    'FOH',
+    'Talent',
   ];
 
   @override

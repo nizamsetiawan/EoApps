@@ -6,6 +6,7 @@ import '../data/dummy_tasks.dart';
 import 'login_page.dart'; // pastikan ini sesuai struktur project kamu
 import '../data/dummy_data_client.dart';
 import '../services/task_notification_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 // =========== ADMIN HOME PAGE CLASS =============
 // Kelas utama untuk halaman admin yang menangani semua fungsionalitas admin
@@ -88,6 +89,32 @@ class AdminHomePageState extends State<AdminHomePage> {
     });
   }
 
+  // Fungsi untuk mereset field form client
+  void _resetClientForm() {
+    _cpwController.clear();
+    _cppController.clear();
+    _dekorasiController.clear();
+    _muaController.clear();
+    _dokumentasiController.clear();
+    _cateringController.clear();
+    _souvenirController.clear();
+    _mcController.clear();
+    _bandController.clear();
+  }
+
+  // Fungsi untuk mereset field form task
+  void _resetTaskForm() {
+    _namaTugas = '';
+    _tanggal = DateTime.now();
+    _jamMulai = '';
+    _jamSelesai = '';
+    _namaPM = '';
+    _pic = '';
+    _selectedStartTime = TimeOfDay.now();
+    _selectedEndTime = TimeOfDay.now();
+    _formKey.currentState?.reset();
+  }
+
   // =========== SUBMIT FORM =============
   // Fungsi untuk menangani submit form pembuatan tugas
   Future<void> _submitForm() async {
@@ -145,70 +172,347 @@ class AdminHomePageState extends State<AdminHomePage> {
         return;
       }
 
-      setState(() {
-        _isLoading = true;
-      });
-
-      try {
-        // Membuat objek tugas baru
-        final task = Task(
-          uid: null,
-          namaTugas: _namaTugas,
-          tanggal: _tanggal,
-          jamMulai: _jamMulai,
-          jamSelesai: _jamSelesai,
-          namaPM: _namaPM,
-          pic: _pic,
-          status: 'pending',
-        );
-
-        // Menyimpan tugas ke Firestore
-        final taskId = await addTask(task);
-
-        if (taskId != null) {
-          // Mengirim notifikasi tugas baru
-          final taskNotificationService = TaskNotificationService();
-          await taskNotificationService.notifyNewTask(task);
-
-          // Tampilkan dialog sukses
-          if (mounted) {
-            showDialog(
-              context: context,
-              builder:
-                  (context) => AlertDialog(
-                    title: const Text('Sukses'),
-                    content: const Text('Task berhasil dibuat'),
-                    actions: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          setState(() {
-                            _currentPage = 'menu';
-                          });
-                        },
-                        child: const Text('OK'),
+      // Tampilkan dialog konfirmasi
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder:
+              (_) => AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                title: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "Konfirmasi",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.amber,
                       ),
-                    ],
-                  ),
-            );
-          }
-        }
-      } catch (e) {
-        // Menampilkan pesan error jika terjadi kesalahan
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Terjadi kesalahan: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.help_outline,
+                        color: Colors.amber,
+                        size: 28,
+                      ),
+                    ),
+                  ],
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      "Apakah data task yang dimasukkan sudah benar?",
+                      style: TextStyle(fontSize: 16),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.amber.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.info_outline,
+                            color: Colors.amber,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Pastikan semua data task yang dimasukkan sudah benar sebelum disimpan',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.amber[700],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.amber),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text(
+                              "Batal",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.amber,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.amber,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () async {
+                              Navigator.pop(context);
+                              setState(() {
+                                _isLoading = true;
+                              });
+
+                              try {
+                                // Membuat objek tugas baru
+                                final task = Task(
+                                  uid: null,
+                                  namaTugas: _namaTugas,
+                                  tanggal: _tanggal,
+                                  jamMulai: _jamMulai,
+                                  jamSelesai: _jamSelesai,
+                                  namaPM: _namaPM,
+                                  pic: _pic,
+                                  status: 'pending',
+                                );
+
+                                // Menyimpan tugas ke Firestore
+                                final taskId = await addTask(task);
+
+                                if (taskId != null) {
+                                  // Mengirim notifikasi tugas baru
+                                  final taskNotificationService =
+                                      TaskNotificationService();
+                                  await taskNotificationService.notifyNewTask(
+                                    task,
+                                  );
+
+                                  // Tampilkan dialog sukses
+                                  if (mounted) {
+                                    showDialog(
+                                      context: context,
+                                      barrierDismissible: false,
+                                      builder:
+                                          (_) => AlertDialog(
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                            ),
+                                            title: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                const Text(
+                                                  "Sukses",
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Color.fromARGB(
+                                                      255,
+                                                      33,
+                                                      83,
+                                                      36,
+                                                    ),
+                                                  ),
+                                                ),
+                                                Container(
+                                                  padding: const EdgeInsets.all(
+                                                    8,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color.fromARGB(
+                                                      255,
+                                                      33,
+                                                      83,
+                                                      36,
+                                                    ).withOpacity(0.1),
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons.check_circle,
+                                                    color: Color.fromARGB(
+                                                      255,
+                                                      33,
+                                                      83,
+                                                      36,
+                                                    ),
+                                                    size: 28,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            content: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Text(
+                                                  "Task berhasil dibuat!",
+                                                  style: TextStyle(
+                                                    fontSize: 16,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                                const SizedBox(height: 20),
+                                                Container(
+                                                  padding: const EdgeInsets.all(
+                                                    16,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color.fromARGB(
+                                                      255,
+                                                      33,
+                                                      83,
+                                                      36,
+                                                    ).withOpacity(0.1),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          12,
+                                                        ),
+                                                    border: Border.all(
+                                                      color:
+                                                          const Color.fromARGB(
+                                                            255,
+                                                            33,
+                                                            83,
+                                                            36,
+                                                          ).withOpacity(0.3),
+                                                    ),
+                                                  ),
+                                                  child: Row(
+                                                    children: [
+                                                      const Icon(
+                                                        Icons.info_outline,
+                                                        color: Color.fromARGB(
+                                                          255,
+                                                          33,
+                                                          83,
+                                                          36,
+                                                        ),
+                                                        size: 24,
+                                                      ),
+                                                      const SizedBox(width: 12),
+                                                      Expanded(
+                                                        child: Text(
+                                                          'Task telah berhasil dibuat dan dapat dilihat di menu Task',
+                                                          style: TextStyle(
+                                                            fontSize: 14,
+                                                            color:
+                                                                const Color.fromARGB(
+                                                                  255,
+                                                                  33,
+                                                                  83,
+                                                                  36,
+                                                                ).withOpacity(
+                                                                  0.7,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 20),
+                                                ElevatedButton(
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor:
+                                                        const Color.fromARGB(
+                                                          255,
+                                                          33,
+                                                          83,
+                                                          36,
+                                                        ),
+                                                    foregroundColor:
+                                                        Colors.white,
+                                                    minimumSize: const Size(
+                                                      double.infinity,
+                                                      45,
+                                                    ),
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            12,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                  onPressed: () {
+                                                    Navigator.pop(context);
+                                                    _resetTaskForm(); // Reset form fields
+                                                    setState(() {
+                                                      _currentPage = 'menu';
+                                                    });
+                                                  },
+                                                  child: const Text(
+                                                    "Kembali ke Menu",
+                                                    style: TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                    );
+                                  }
+                                } else {
+                                  throw Exception(
+                                    'Failed to create task - no taskId returned',
+                                  );
+                                }
+                              } catch (e) {
+                                // Menampilkan pesan error jika terjadi kesalahan
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Terjadi kesalahan: $e'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              } finally {
+                                if (mounted) {
+                                  setState(() {
+                                    _isLoading = false;
+                                  });
+                                }
+                              }
+                            },
+                            child: const Text(
+                              "Ya, Simpan",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+        );
       }
     }
   }
@@ -279,6 +583,61 @@ class AdminHomePageState extends State<AdminHomePage> {
       });
 
       try {
+        // Cek status task dan kelengkapan data
+        final tasksSnapshot =
+            await FirebaseFirestore.instance
+                .collection('tasks')
+                .where('status', isNotEqualTo: 'done')
+                .get();
+
+        if (tasksSnapshot.docs.isNotEmpty) {
+          // Ada task yang belum selesai
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Tidak dapat menabahkan data client karena masih ada task yang belum selesai',
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
+            setState(() {
+              _isLoading = false;
+            });
+            return;
+          }
+        }
+
+        // Cek kelengkapan keterangan dan bukti
+        final tasksWithIncompleteData =
+            await FirebaseFirestore.instance
+                .collection('tasks')
+                .where('status', isEqualTo: 'done')
+                .get();
+
+        for (var doc in tasksWithIncompleteData.docs) {
+          final data = doc.data();
+          if (data['keterangan'] == null ||
+              data['keterangan'].toString().isEmpty ||
+              data['bukti'] == null ||
+              data['bukti'].toString().isEmpty) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Tidak dapat menambahkan data client karena masih ada task yang belum memiliki keterangan dan bukti lengkap',
+                  ),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              setState(() {
+                _isLoading = false;
+              });
+              return;
+            }
+          }
+        }
+
         // Membuat objek client baru
         final client = DataClient(
           cpw: _cpwController.text,
@@ -314,10 +673,22 @@ class AdminHomePageState extends State<AdminHomePage> {
                           color: Color.fromARGB(255, 33, 83, 36),
                         ),
                       ),
-                      const Icon(
-                        Icons.check_circle,
-                        color: Colors.green,
-                        size: 28,
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color.fromARGB(
+                            255,
+                            33,
+                            83,
+                            36,
+                          ).withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.check_circle,
+                          color: Color.fromARGB(255, 33, 83, 36),
+                          size: 28,
+                        ),
                       ),
                     ],
                   ),
@@ -327,6 +698,52 @@ class AdminHomePageState extends State<AdminHomePage> {
                       const Text(
                         "Data client berhasil ditambahkan!",
                         style: TextStyle(fontSize: 16),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color.fromARGB(
+                            255,
+                            33,
+                            83,
+                            36,
+                          ).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color.fromARGB(
+                              255,
+                              33,
+                              83,
+                              36,
+                            ).withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.info_outline,
+                              color: Color.fromARGB(255, 33, 83, 36),
+                              size: 24,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Data client telah tersimpan dan dapat dilihat di menu Data Client',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: const Color.fromARGB(
+                                    255,
+                                    33,
+                                    83,
+                                    36,
+                                  ).withOpacity(0.7),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 20),
                       ElevatedButton(
@@ -344,14 +761,15 @@ class AdminHomePageState extends State<AdminHomePage> {
                           ),
                         ),
                         onPressed: () {
-                          Navigator.pop(context); // Tutup dialog
+                          Navigator.pop(context);
+                          _resetClientForm(); // Reset form fields
                           setState(() {
                             _currentPage = 'menu';
                             _loadDataClients(); // Reload client data
                           });
                         },
                         child: const Text(
-                          "Kembali",
+                          "Kembali ke Menu",
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -425,7 +843,7 @@ class AdminHomePageState extends State<AdminHomePage> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Administrator',
+                      'Administraor',
                       style: TextStyle(fontSize: 18, color: Colors.white70),
                     ),
                   ],
@@ -465,8 +883,141 @@ class AdminHomePageState extends State<AdminHomePage> {
                     _buildMenuCard(
                       icon: Icons.person_add,
                       title: 'Tambah Data Client',
-                      onTap:
-                          () => setState(() => _currentPage = 'create_client'),
+                      onTap: () async {
+                        // Cek status task dan kelengkapan data
+                        final tasksSnapshot =
+                            await FirebaseFirestore.instance
+                                .collection('tasks')
+                                .get();
+
+                        bool canAddClient = true;
+                        String errorMessage = '';
+
+                        for (var doc in tasksSnapshot.docs) {
+                          final data = doc.data();
+                          if (data['status'] != 'done') {
+                            canAddClient = false;
+                            errorMessage =
+                                'Tidak dapat menambahkan data client karena masih ada task yang belum selesai';
+                            break;
+                          }
+                          if (data['keterangan'] == null ||
+                              data['keterangan'].toString().isEmpty ||
+                              data['bukti'] == null ||
+                              data['bukti'].toString().isEmpty) {
+                            canAddClient = false;
+                            errorMessage =
+                                'Tidak dapat menambahkan data client karena masih ada task yang belum memiliki keterangan dan bukti lengkap';
+                            break;
+                          }
+                        }
+
+                        if (!canAddClient) {
+                          if (mounted) {
+                            showDialog(
+                              context: context,
+                              barrierDismissible: false,
+                              builder:
+                                  (_) => AlertDialog(
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    title: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Text(
+                                          "Peringatan",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.red,
+                                          ),
+                                        ),
+                                        const Icon(
+                                          Icons.warning_amber_rounded,
+                                          color: Colors.red,
+                                          size: 28,
+                                        ),
+                                      ],
+                                    ),
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          errorMessage,
+                                          style: const TextStyle(fontSize: 16),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        const SizedBox(height: 20),
+                                        Container(
+                                          padding: const EdgeInsets.all(16),
+                                          decoration: BoxDecoration(
+                                            color: Colors.red.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            border: Border.all(
+                                              color: Colors.red.withOpacity(
+                                                0.3,
+                                              ),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.info_outline,
+                                                color: Colors.red,
+                                                size: 24,
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Text(
+                                                  'Pastikan semua task sudah selesai dan memiliki keterangan serta bukti yang lengkap',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    color: Colors.red[700],
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 20),
+                                        ElevatedButton(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.red,
+                                            foregroundColor: Colors.white,
+                                            minimumSize: const Size(
+                                              double.infinity,
+                                              45,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                          ),
+                                          onPressed: () {
+                                            Navigator.pop(context);
+                                          },
+                                          child: const Text(
+                                            "OK",
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                            );
+                            return;
+                          }
+                        }
+
+                        // Jika semua pengecekan berhasil, buka form tambah client
+                        setState(() => _currentPage = 'create_client');
+                      },
                       isFullWidth: true,
                     ),
                   ],
@@ -1175,65 +1726,64 @@ class AdminHomePageState extends State<AdminHomePage> {
             ),
             const SizedBox(height: 24),
 
-            // CPW & CPP Section
+            // Form Fields
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(15),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Icon(Icons.favorite, color: Colors.grey[700], size: 20),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Data Pasangan',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
+                    const Text(
+                      'Data Pasangan',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color.fromARGB(255, 33, 83, 36),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _cpwController,
                       decoration: InputDecoration(
                         labelText: 'Nama CPW',
+                        hintText: 'Masukkan nama CPW',
+                        prefixIcon: const Icon(Icons.person),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                         filled: true,
                         fillColor: Colors.grey[50],
-                        prefixIcon: const Icon(
-                          Icons.person_outline,
-                          color: Color.fromARGB(255, 33, 83, 36),
-                        ),
                       ),
-                      validator:
-                          (value) => value!.isEmpty ? 'Wajib diisi' : null,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Nama CPW wajib diisi';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _cppController,
                       decoration: InputDecoration(
                         labelText: 'Nama CPP',
+                        hintText: 'Masukkan nama CPP',
+                        prefixIcon: const Icon(Icons.person),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                         filled: true,
                         fillColor: Colors.grey[50],
-                        prefixIcon: const Icon(
-                          Icons.person_outline,
-                          color: Color.fromARGB(255, 33, 83, 36),
-                        ),
                       ),
-                      validator:
-                          (value) => value!.isEmpty ? 'Wajib diisi' : null,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Nama CPP wajib diisi';
+                        }
+                        return null;
+                      },
                     ),
                   ],
                 ),
@@ -1245,151 +1795,118 @@ class AdminHomePageState extends State<AdminHomePage> {
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(15),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Icon(Icons.business, color: Colors.grey[700], size: 20),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Data Vendor',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
+                    const Text(
+                      'Data Vendor',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color.fromARGB(255, 33, 83, 36),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _dekorasiController,
                       decoration: InputDecoration(
-                        labelText: 'Vendor Dekorasi',
+                        labelText: 'Dekorasi',
+                        hintText: 'Masukkan nama vendor dekorasi',
+                        prefixIcon: const Icon(Icons.celebration),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                         filled: true,
                         fillColor: Colors.grey[50],
-                        prefixIcon: const Icon(
-                          Icons.celebration,
-                          color: Color.fromARGB(255, 33, 83, 36),
-                        ),
                       ),
-                      validator:
-                          (value) => value!.isEmpty ? 'Wajib diisi' : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _muaController,
                       decoration: InputDecoration(
-                        labelText: 'Vendor MUA',
+                        labelText: 'MUA',
+                        hintText: 'Masukkan nama MUA',
+                        prefixIcon: const Icon(Icons.face),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                         filled: true,
                         fillColor: Colors.grey[50],
-                        prefixIcon: const Icon(
-                          Icons.face,
-                          color: Color.fromARGB(255, 33, 83, 36),
-                        ),
                       ),
-                      validator:
-                          (value) => value!.isEmpty ? 'Wajib diisi' : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _dokumentasiController,
                       decoration: InputDecoration(
-                        labelText: 'Vendor Dokumentasi',
+                        labelText: 'Dokumentasi',
+                        hintText: 'Masukkan nama vendor dokumentasi',
+                        prefixIcon: const Icon(Icons.camera_alt),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                         filled: true,
                         fillColor: Colors.grey[50],
-                        prefixIcon: const Icon(
-                          Icons.camera_alt,
-                          color: Color.fromARGB(255, 33, 83, 36),
-                        ),
                       ),
-                      validator:
-                          (value) => value!.isEmpty ? 'Wajib diisi' : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _cateringController,
                       decoration: InputDecoration(
-                        labelText: 'Vendor Catering',
+                        labelText: 'Catering',
+                        hintText: 'Masukkan nama vendor catering',
+                        prefixIcon: const Icon(Icons.restaurant),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                         filled: true,
                         fillColor: Colors.grey[50],
-                        prefixIcon: const Icon(
-                          Icons.restaurant,
-                          color: Color.fromARGB(255, 33, 83, 36),
-                        ),
                       ),
-                      validator:
-                          (value) => value!.isEmpty ? 'Wajib diisi' : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _souvenirController,
                       decoration: InputDecoration(
-                        labelText: 'Vendor Souvenir',
+                        labelText: 'Souvenir',
+                        hintText: 'Masukkan nama vendor souvenir',
+                        prefixIcon: const Icon(Icons.card_giftcard),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                         filled: true,
                         fillColor: Colors.grey[50],
-                        prefixIcon: const Icon(
-                          Icons.card_giftcard,
-                          color: Color.fromARGB(255, 33, 83, 36),
-                        ),
                       ),
-                      validator:
-                          (value) => value!.isEmpty ? 'Wajib diisi' : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _mcController,
                       decoration: InputDecoration(
-                        labelText: 'Vendor MC',
+                        labelText: 'MC',
+                        hintText: 'Masukkan nama MC',
+                        prefixIcon: const Icon(Icons.mic),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                         filled: true,
                         fillColor: Colors.grey[50],
-                        prefixIcon: const Icon(
-                          Icons.mic,
-                          color: Color.fromARGB(255, 33, 83, 36),
-                        ),
                       ),
-                      validator:
-                          (value) => value!.isEmpty ? 'Wajib diisi' : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _bandController,
                       decoration: InputDecoration(
-                        labelText: 'Vendor Band',
+                        labelText: 'Band',
+                        hintText: 'Masukkan nama band',
+                        prefixIcon: const Icon(Icons.music_note),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                         filled: true,
                         fillColor: Colors.grey[50],
-                        prefixIcon: const Icon(
-                          Icons.music_note,
-                          color: Color.fromARGB(255, 33, 83, 36),
-                        ),
                       ),
-                      validator:
-                          (value) => value!.isEmpty ? 'Wajib diisi' : null,
                     ),
                   ],
                 ),
@@ -1408,7 +1925,411 @@ class AdminHomePageState extends State<AdminHomePage> {
                 ),
                 elevation: 4,
               ),
-              onPressed: _isLoading ? null : _submitClientForm,
+              onPressed:
+                  _isLoading
+                      ? null
+                      : () {
+                        if (_formKey.currentState!.validate()) {
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder:
+                                (_) => AlertDialog(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  title: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text(
+                                        "Konfirmasi",
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.amber,
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.amber.withOpacity(0.1),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.help_outline,
+                                          color: Colors.amber,
+                                          size: 28,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  content: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Text(
+                                        "Apakah data yang dimasukkan sudah benar?",
+                                        style: TextStyle(fontSize: 16),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 20),
+                                      Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: Colors.amber.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.amber.withOpacity(
+                                              0.3,
+                                            ),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.info_outline,
+                                              color: Colors.amber,
+                                              size: 24,
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Text(
+                                                'Pastikan semua data yang dimasukkan sudah benar sebelum disimpan',
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: Colors.amber[700],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 20),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: OutlinedButton(
+                                              style: OutlinedButton.styleFrom(
+                                                side: const BorderSide(
+                                                  color: Colors.amber,
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 12,
+                                                    ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                              ),
+                                              onPressed:
+                                                  () => Navigator.pop(context),
+                                              child: const Text(
+                                                "Batal",
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.amber,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: ElevatedButton(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.amber,
+                                                foregroundColor: Colors.white,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 12,
+                                                    ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                              ),
+                                              onPressed: () async {
+                                                Navigator.pop(context);
+                                                setState(() {
+                                                  _isLoading = true;
+                                                });
+
+                                                try {
+                                                  // Membuat objek tugas baru
+                                                  final task = Task(
+                                                    uid: null,
+                                                    namaTugas: _namaTugas,
+                                                    tanggal: _tanggal,
+                                                    jamMulai: _jamMulai,
+                                                    jamSelesai: _jamSelesai,
+                                                    namaPM: _namaPM,
+                                                    pic: _pic,
+                                                    status: 'pending',
+                                                  );
+
+                                                  // Menyimpan tugas ke Firestore
+                                                  final taskId = await addTask(
+                                                    task,
+                                                  );
+
+                                                  if (taskId != null) {
+                                                    // Mengirim notifikasi tugas baru
+                                                    final taskNotificationService =
+                                                        TaskNotificationService();
+                                                    await taskNotificationService
+                                                        .notifyNewTask(task);
+
+                                                    // Tampilkan dialog sukses
+                                                    if (mounted) {
+                                                      showDialog(
+                                                        context: context,
+                                                        barrierDismissible:
+                                                            false,
+                                                        builder:
+                                                            (_) => AlertDialog(
+                                                              shape: RoundedRectangleBorder(
+                                                                borderRadius:
+                                                                    BorderRadius.circular(
+                                                                      16,
+                                                                    ),
+                                                              ),
+                                                              title: Row(
+                                                                mainAxisAlignment:
+                                                                    MainAxisAlignment
+                                                                        .spaceBetween,
+                                                                children: [
+                                                                  const Text(
+                                                                    "Sukses",
+                                                                    style: TextStyle(
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                      color:
+                                                                          Color.fromARGB(
+                                                                            255,
+                                                                            33,
+                                                                            83,
+                                                                            36,
+                                                                          ),
+                                                                    ),
+                                                                  ),
+                                                                  Container(
+                                                                    padding:
+                                                                        const EdgeInsets.all(
+                                                                          8,
+                                                                        ),
+                                                                    decoration: BoxDecoration(
+                                                                      color: const Color.fromARGB(
+                                                                        255,
+                                                                        33,
+                                                                        83,
+                                                                        36,
+                                                                      ).withOpacity(
+                                                                        0.1,
+                                                                      ),
+                                                                      shape:
+                                                                          BoxShape
+                                                                              .circle,
+                                                                    ),
+                                                                    child: const Icon(
+                                                                      Icons
+                                                                          .check_circle,
+                                                                      color:
+                                                                          Color.fromARGB(
+                                                                            255,
+                                                                            33,
+                                                                            83,
+                                                                            36,
+                                                                          ),
+                                                                      size: 28,
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                              content: Column(
+                                                                mainAxisSize:
+                                                                    MainAxisSize
+                                                                        .min,
+                                                                children: [
+                                                                  const Text(
+                                                                    "Task berhasil dibuat!",
+                                                                    style: TextStyle(
+                                                                      fontSize:
+                                                                          16,
+                                                                    ),
+                                                                    textAlign:
+                                                                        TextAlign
+                                                                            .center,
+                                                                  ),
+                                                                  const SizedBox(
+                                                                    height: 20,
+                                                                  ),
+                                                                  Container(
+                                                                    padding:
+                                                                        const EdgeInsets.all(
+                                                                          16,
+                                                                        ),
+                                                                    decoration: BoxDecoration(
+                                                                      color: const Color.fromARGB(
+                                                                        255,
+                                                                        33,
+                                                                        83,
+                                                                        36,
+                                                                      ).withOpacity(
+                                                                        0.1,
+                                                                      ),
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
+                                                                            12,
+                                                                          ),
+                                                                      border: Border.all(
+                                                                        color: const Color.fromARGB(
+                                                                          255,
+                                                                          33,
+                                                                          83,
+                                                                          36,
+                                                                        ).withOpacity(
+                                                                          0.3,
+                                                                        ),
+                                                                      ),
+                                                                    ),
+                                                                    child: Row(
+                                                                      children: [
+                                                                        const Icon(
+                                                                          Icons
+                                                                              .info_outline,
+                                                                          color: Color.fromARGB(
+                                                                            255,
+                                                                            33,
+                                                                            83,
+                                                                            36,
+                                                                          ),
+                                                                          size:
+                                                                              24,
+                                                                        ),
+                                                                        const SizedBox(
+                                                                          width:
+                                                                              12,
+                                                                        ),
+                                                                        Expanded(
+                                                                          child: Text(
+                                                                            'Task telah berhasil dibuat dan dapat dilihat di menu Task',
+                                                                            style: TextStyle(
+                                                                              fontSize:
+                                                                                  14,
+                                                                              color: const Color.fromARGB(
+                                                                                255,
+                                                                                33,
+                                                                                83,
+                                                                                36,
+                                                                              ).withOpacity(
+                                                                                0.7,
+                                                                              ),
+                                                                            ),
+                                                                          ),
+                                                                        ),
+                                                                      ],
+                                                                    ),
+                                                                  ),
+                                                                  const SizedBox(
+                                                                    height: 20,
+                                                                  ),
+                                                                  ElevatedButton(
+                                                                    style: ElevatedButton.styleFrom(
+                                                                      backgroundColor:
+                                                                          const Color.fromARGB(
+                                                                            255,
+                                                                            33,
+                                                                            83,
+                                                                            36,
+                                                                          ),
+                                                                      foregroundColor:
+                                                                          Colors
+                                                                              .white,
+                                                                      minimumSize:
+                                                                          const Size(
+                                                                            double.infinity,
+                                                                            45,
+                                                                          ),
+                                                                      shape: RoundedRectangleBorder(
+                                                                        borderRadius:
+                                                                            BorderRadius.circular(
+                                                                              12,
+                                                                            ),
+                                                                      ),
+                                                                    ),
+                                                                    onPressed: () {
+                                                                      Navigator.pop(
+                                                                        context,
+                                                                      );
+                                                                      _resetTaskForm(); // Reset form fields
+                                                                      setState(() {
+                                                                        _currentPage =
+                                                                            'menu';
+                                                                      });
+                                                                    },
+                                                                    child: const Text(
+                                                                      "Kembali ke Menu",
+                                                                      style: TextStyle(
+                                                                        fontSize:
+                                                                            16,
+                                                                        fontWeight:
+                                                                            FontWeight.bold,
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            ),
+                                                      );
+                                                    }
+                                                  } else {
+                                                    throw Exception(
+                                                      'Failed to create task - no taskId returned',
+                                                    );
+                                                  }
+                                                } catch (e) {
+                                                  // Menampilkan pesan error jika terjadi kesalahan
+                                                  if (mounted) {
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    ).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text(
+                                                          'Terjadi kesalahan: $e',
+                                                        ),
+                                                        backgroundColor:
+                                                            Colors.red,
+                                                      ),
+                                                    );
+                                                  }
+                                                } finally {
+                                                  if (mounted) {
+                                                    setState(() {
+                                                      _isLoading = false;
+                                                    });
+                                                  }
+                                                }
+                                              },
+                                              child: const Text(
+                                                "Ya, Simpan",
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                          );
+                        }
+                      },
               child:
                   _isLoading
                       ? const SizedBox(
@@ -1530,22 +2451,35 @@ class AdminHomePageState extends State<AdminHomePage> {
           ),
         ],
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.grey[50]!, Colors.grey[100]!],
+      body: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.grey[50]!, Colors.grey[100]!],
+              ),
+            ),
+            child:
+                _currentPage == 'menu'
+                    ? _buildMenuUtama()
+                    : _currentPage == 'task'
+                    ? _buildTugasForm()
+                    : _currentPage == 'client'
+                    ? _buildDataClientPage()
+                    : _buildCreateClientForm(),
           ),
-        ),
-        child:
-            _currentPage == 'menu'
-                ? _buildMenuUtama()
-                : _currentPage == 'task'
-                ? _buildTugasForm()
-                : _currentPage == 'client'
-                ? _buildDataClientPage()
-                : _buildCreateClientForm(),
+          if (_isLoading)
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  color: Color.fromARGB(255, 33, 83, 36),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

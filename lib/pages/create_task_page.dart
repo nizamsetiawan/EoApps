@@ -22,7 +22,6 @@ class CreateTaskPage extends StatefulWidget {
 }
 
 class _CreateTaskPageState extends State<CreateTaskPage> {
-  // Key untuk form validasi
   final _formKey = GlobalKey<FormState>();
   // Service untuk menangani notifikasi tugas
   final _taskNotificationService = TaskNotificationService();
@@ -54,6 +53,19 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   @override
   void initState() {
     super.initState();
+  }
+
+  // Fungsi untuk mereset field form task
+  void _resetTaskForm() {
+    _namaTugas = '';
+    _tanggal = DateTime.now();
+    _jamMulai = '';
+    _jamSelesai = '';
+    _namaPM = '';
+    _pic = '';
+    _selectedStartTime = TimeOfDay.now();
+    _selectedEndTime = TimeOfDay.now();
+    _formKey.currentState?.reset();
   }
 
   // ======= SUBMIT FORM =======
@@ -102,126 +114,346 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // Validasi nama tugas
-      if (_namaTugas.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Nama tugas tidak boleh kosong.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-
-      // Membuat objek tugas baru
-      final task = Task(
-        uid: null,
-        namaTugas: _namaTugas,
-        tanggal: _tanggal,
-        jamMulai: _jamMulai,
-        jamSelesai: _jamSelesai,
-        namaPM: _namaPM,
-        pic: _pic,
-        status: 'pending',
+    // Validasi nama tugas
+    if (_namaTugas.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nama tugas tidak boleh kosong.'),
+          backgroundColor: Colors.red,
+        ),
       );
+      return;
+    }
 
-      // Menyimpan tugas ke Firestore
-      final taskId = await addTask(task);
-
-      if (taskId != null) {
-        // Mengirim notifikasi tugas baru
-        final taskNotificationService = TaskNotificationService();
-        await taskNotificationService.notifyNewTask(task);
-
-        if (mounted) {
-          // Menampilkan dialog sukses
-          await showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder:
-                (_) => AlertDialog(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+    // Tampilkan dialog konfirmasi
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (_) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "Konfirmasi",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.amber,
+                    ),
                   ),
-                  title: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.help_outline,
+                      color: Colors.amber,
+                      size: 28,
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    "Apakah data task yang dimasukkan sudah benar?",
+                    style: TextStyle(fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.info_outline,
+                          color: Colors.amber,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Pastikan semua data task yang dimasukkan sudah benar sebelum disimpan',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.amber[700],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
                     children: [
-                      const Text(
-                        "Sukses",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Color.fromARGB(255, 33, 83, 36),
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.amber),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text(
+                            "Batal",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.amber,
+                            ),
+                          ),
                         ),
                       ),
-                      const Icon(
-                        Icons.check_circle,
-                        color: Colors.green,
-                        size: 28,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.amber,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () async {
+                            Navigator.pop(context);
+                            setState(() {
+                              _isLoading = true;
+                            });
+
+                            try {
+                              // Membuat objek tugas baru
+                              final task = Task(
+                                uid: null,
+                                namaTugas: _namaTugas,
+                                tanggal: _tanggal,
+                                jamMulai: _jamMulai,
+                                jamSelesai: _jamSelesai,
+                                namaPM: _namaPM,
+                                pic: _pic,
+                                status: 'pending',
+                              );
+
+                              // Menyimpan tugas ke Firestore
+                              final taskId = await addTask(task);
+
+                              if (taskId != null) {
+                                // Mengirim notifikasi tugas baru
+                                final taskNotificationService =
+                                    TaskNotificationService();
+                                await taskNotificationService.notifyNewTask(
+                                  task,
+                                );
+
+                                if (mounted) {
+                                  // Menampilkan dialog sukses
+                                  await showDialog(
+                                    context: context,
+                                    barrierDismissible: false,
+                                    builder:
+                                        (_) => AlertDialog(
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
+                                          ),
+                                          title: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              const Text(
+                                                "Sukses",
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Color.fromARGB(
+                                                    255,
+                                                    33,
+                                                    83,
+                                                    36,
+                                                  ),
+                                                ),
+                                              ),
+                                              Container(
+                                                padding: const EdgeInsets.all(
+                                                  8,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: const Color.fromARGB(
+                                                    255,
+                                                    33,
+                                                    83,
+                                                    36,
+                                                  ).withOpacity(0.1),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: const Icon(
+                                                  Icons.check_circle,
+                                                  color: Color.fromARGB(
+                                                    255,
+                                                    33,
+                                                    83,
+                                                    36,
+                                                  ),
+                                                  size: 28,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          content: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Text(
+                                                "Task berhasil dibuat!",
+                                                style: TextStyle(fontSize: 16),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                              const SizedBox(height: 20),
+                                              Container(
+                                                padding: const EdgeInsets.all(
+                                                  16,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: const Color.fromARGB(
+                                                    255,
+                                                    33,
+                                                    83,
+                                                    36,
+                                                  ).withOpacity(0.1),
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  border: Border.all(
+                                                    color: const Color.fromARGB(
+                                                      255,
+                                                      33,
+                                                      83,
+                                                      36,
+                                                    ).withOpacity(0.3),
+                                                  ),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.info_outline,
+                                                      color: Color.fromARGB(
+                                                        255,
+                                                        33,
+                                                        83,
+                                                        36,
+                                                      ),
+                                                      size: 24,
+                                                    ),
+                                                    const SizedBox(width: 12),
+                                                    Expanded(
+                                                      child: Text(
+                                                        'Task telah berhasil dibuat dan dapat dilihat di menu Task',
+                                                        style: TextStyle(
+                                                          fontSize: 14,
+                                                          color:
+                                                              const Color.fromARGB(
+                                                                255,
+                                                                33,
+                                                                83,
+                                                                36,
+                                                              ).withOpacity(
+                                                                0.7,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(height: 20),
+                                              ElevatedButton(
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor:
+                                                      const Color.fromARGB(
+                                                        255,
+                                                        33,
+                                                        83,
+                                                        36,
+                                                      ),
+                                                  foregroundColor: Colors.white,
+                                                  minimumSize: const Size(
+                                                    double.infinity,
+                                                    45,
+                                                  ),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          12,
+                                                        ),
+                                                  ),
+                                                ),
+                                                onPressed: () {
+                                                  Navigator.pop(context);
+                                                  _resetTaskForm(); // Reset form fields
+                                                  Navigator.pop(context);
+                                                },
+                                                child: const Text(
+                                                  "Kembali ke Menu",
+                                                  style: TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                  );
+                                }
+                              } else {
+                                throw Exception(
+                                  'Failed to create task - no taskId returned',
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Terjadi kesalahan: $e'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            } finally {
+                              if (mounted) {
+                                setState(() {
+                                  _isLoading = false;
+                                });
+                              }
+                            }
+                          },
+                          child: const Text(
+                            "Ya, Simpan",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        "Tugas berhasil dibuat!",
-                        style: TextStyle(fontSize: 16),
-                      ),
-                      const SizedBox(height: 20),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color.fromARGB(
-                            255,
-                            33,
-                            83,
-                            36,
-                          ),
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size(double.infinity, 45),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.pop(context);
-                        },
-                        child: const Text(
-                          "Kembali",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-          );
-        }
-      } else {
-        throw Exception('Failed to create task - no taskId returned');
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Terjadi kesalahan: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+                ],
+              ),
+            ),
+      );
     }
   }
 
@@ -288,7 +520,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // AppBar dengan judul dan tombol kembali
       appBar: AppBar(
         title: const Text('PM Create Task'),
         titleTextStyle: const TextStyle(
@@ -307,16 +538,28 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      // Body dengan gradient background
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.grey[50]!, Colors.grey[100]!],
+      body: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.grey[50]!, Colors.grey[100]!],
+              ),
+            ),
+            child: _buildTugasForm(),
           ),
-        ),
-        child: _buildTugasForm(),
+          if (_isLoading)
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  color: Color.fromARGB(255, 33, 83, 36),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

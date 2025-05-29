@@ -1446,23 +1446,13 @@ class _PMHomePageState extends State<PMHomePage> {
 
   Widget _buildRecapPage() {
     return StreamBuilder<List<Task>>(
-      stream:
-          _isDateRangeMode
-              ? FirebaseFirestore.instance
-                  .collection('tasks')
-                  .where('tanggal', isGreaterThanOrEqualTo: _startDate)
-                  .where(
-                    'tanggal',
-                    isLessThan: _endDate.add(const Duration(days: 1)),
-                  )
-                  .snapshots()
-                  .map(
-                    (snapshot) =>
-                        snapshot.docs
-                            .map((doc) => Task.fromFirestore(doc))
-                            .toList(),
-                  )
-              : getTasksStream(_selectedDate),
+      stream: FirebaseFirestore.instance
+          .collection('tasks')
+          .snapshots()
+          .map(
+            (snapshot) =>
+                snapshot.docs.map((doc) => Task.fromFirestore(doc)).toList(),
+          ),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Center(child: Text('Error: ${snapshot.error}'));
@@ -1482,8 +1472,22 @@ class _PMHomePageState extends State<PMHomePage> {
         final completionRate =
             totalTasks > 0 ? (doneTasks / totalTasks * 100) : 0;
 
+        // Hitung rata-rata task per hari berdasarkan tanggal pertama dan terakhir
+        DateTime? firstDate;
+        DateTime? lastDate;
+        for (var task in tasks) {
+          if (firstDate == null || task.tanggal.isBefore(firstDate)) {
+            firstDate = task.tanggal;
+          }
+          if (lastDate == null || task.tanggal.isAfter(lastDate)) {
+            lastDate = task.tanggal;
+          }
+        }
+
         final daysDiff =
-            _isDateRangeMode ? _endDate.difference(_startDate).inDays + 1 : 1;
+            firstDate != null && lastDate != null
+                ? lastDate.difference(firstDate).inDays + 1
+                : 1;
         final avgTasksPerDay = totalTasks / daysDiff;
 
         final completedTasks =
@@ -1525,7 +1529,11 @@ class _PMHomePageState extends State<PMHomePage> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.analytics, size: 50, color: Colors.white),
+                      const Icon(
+                        Icons.analytics,
+                        size: 50,
+                        color: Colors.white,
+                      ),
                       const SizedBox(height: 16),
                       const Text(
                         'Task Recap',
@@ -1533,16 +1541,6 @@ class _PMHomePageState extends State<PMHomePage> {
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _isDateRangeMode
-                            ? 'Range: ${_startDate.day}/${_startDate.month}/${_startDate.year} - ${_endDate.day}/${_endDate.month}/${_endDate.year}'
-                            : 'Tanggal: ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Colors.white70,
                         ),
                       ),
                     ],
@@ -1608,13 +1606,27 @@ class _PMHomePageState extends State<PMHomePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Status Distribution',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color.fromARGB(255, 33, 83, 36),
-                        ),
+                      Row(
+                        children: [
+                          const Text(
+                            'Status Distribution',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color.fromARGB(255, 33, 83, 36),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Tooltip(
+                            message:
+                                'Menampilkan distribusi status task (Not Complete, Pending, Done) dalam bentuk pie chart',
+                            child: Icon(
+                              Icons.info_outline,
+                              size: 20,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 20),
                       SizedBox(
@@ -1677,13 +1689,27 @@ class _PMHomePageState extends State<PMHomePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Tasks by PIC',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color.fromARGB(255, 33, 83, 36),
-                        ),
+                      Row(
+                        children: [
+                          const Text(
+                            'Tasks by PIC',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color.fromARGB(255, 33, 83, 36),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Tooltip(
+                            message:
+                                'Menampilkan jumlah task yang ditangani oleh setiap PIC (Person In Charge)',
+                            child: Icon(
+                              Icons.info_outline,
+                              size: 20,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 20),
                       SizedBox(
@@ -2290,40 +2316,71 @@ class _PMHomePageState extends State<PMHomePage> {
     Color color, {
     VoidCallback? onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: color, size: 24),
-              const SizedBox(height: 4),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: color,
+    String tooltipText = '';
+    switch (title) {
+      case 'Total Task':
+        tooltipText = 'Jumlah keseluruhan task yang ada dalam sistem';
+        break;
+      case 'Completion Rate':
+        tooltipText =
+            'Persentase task yang sudah selesai (status done) dari total task';
+        break;
+      case 'Avg Tasks/Day':
+        tooltipText =
+            'Rata-rata jumlah task per hari, dihitung dari rentang waktu antara task pertama dan terakhir';
+        break;
+      case 'Task Selesai':
+        tooltipText =
+            'Jumlah task yang sudah selesai dan memiliki keterangan serta bukti lengkap';
+        break;
+    }
+
+    return Tooltip(
+      message: tooltipText,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Card(
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icon, color: color, size: 24),
+                    const SizedBox(width: 4),
+                    Icon(Icons.info_outline, color: color, size: 16),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 2),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  title,
-                  style: const TextStyle(fontSize: 11, color: Colors.grey),
-                  textAlign: TextAlign.center,
+                const SizedBox(height: 2),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    title,
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

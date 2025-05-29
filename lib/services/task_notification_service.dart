@@ -143,12 +143,18 @@ class TaskNotificationService {
         final taskId =
             task.uid ?? DateTime.now().millisecondsSinceEpoch.toString();
         final currentTimeFormatted = DateFormat('HH:mm').format(now);
+        final taskDateFormatted = DateFormat(
+          'dd MMMM yyyy',
+        ).format(task.tanggal);
 
         // Kirim notifikasi FCM untuk task baru
         await _sendFCMToUsers(
           title: 'Task Baru Dibuat',
           body:
-              'Task "${task.namaTugas}" dibuat pada $currentTimeFormatted, dijadwalkan mulai ${task.jamMulai} tanggal ${task.tanggal.toString().split(' ')[0]}',
+              'Task baru "${task.namaTugas}" telah dibuat pada $currentTimeFormatted. '
+              'Task ini akan dilaksanakan pada tanggal $taskDateFormatted mulai pukul ${task.jamMulai} hingga ${task.jamSelesai}. '
+              'Project Manager yang bertanggung jawab adalah ${task.namaPM} dan PIC yang ditunjuk adalah ${task.pic}. '
+              'Silakan periksa detail task untuk informasi lebih lanjut.',
           data: {
             'type': 'task_created',
             'taskId': taskId,
@@ -177,8 +183,7 @@ class TaskNotificationService {
             initialDelay: initialDelayReminder,
             constraints: Constraints(
               networkType: NetworkType.connected,
-              requiresBatteryNotLow:
-                  false, // Ubah ke false agar tetap berjalan meski baterai rendah
+              requiresBatteryNotLow: false,
               requiresCharging: false,
               requiresDeviceIdle: false,
               requiresStorageNotLow: false,
@@ -187,7 +192,9 @@ class TaskNotificationService {
               'id': reminderId,
               'title': 'Pengingat Task',
               'body':
-                  'Task "${task.namaTugas}" akan dimulai dalam $minutesBeforeStart menit.',
+                  'Pengingat: Task "${task.namaTugas}" akan dimulai dalam $minutesBeforeStart menit. '
+                  'Task ini dipimpin oleh ${task.namaPM} dan PIC ${task.pic}. '
+                  'Silakan persiapkan diri Anda dan pastikan semua persiapan telah selesai.',
               'payload': taskId,
               'type': 'reminder',
               'taskId': taskId,
@@ -218,7 +225,9 @@ class TaskNotificationService {
               'id': startId,
               'title': 'Task Dimulai',
               'body':
-                  'Task "${task.namaTugas}" DIMULAI SEKARANG! (${task.jamMulai})',
+                  'Task "${task.namaTugas}" telah dimulai pada pukul ${task.jamMulai}. '
+                  'Task ini dipimpin oleh ${task.namaPM} dengan PIC ${task.pic}. '
+                  'Silakan mulai melaksanakan tugas Anda sesuai dengan rencana yang telah disusun.',
               'payload': taskId,
               'type': 'task_started',
               'taskId': taskId,
@@ -242,7 +251,10 @@ class TaskNotificationService {
       // Kirim notifikasi FCM
       await _sendFCMToUsers(
         title: 'Status Task Berubah',
-        body: 'Status task "${task.namaTugas}" berubah menjadi "$newStatus"',
+        body:
+            'Status task "${task.namaTugas}" telah berubah menjadi "$newStatus". '
+            'Task ini dipimpin oleh ${task.namaPM} dengan PIC ${task.pic}. '
+            'Silakan periksa detail task untuk informasi lebih lanjut mengenai perubahan status ini.',
         data: {
           'type': 'status_changed',
           'taskId': task.uid ?? '',
@@ -265,7 +277,11 @@ class TaskNotificationService {
       // Kirim notifikasi FCM
       await _sendFCMToUsers(
         title: 'Keterangan Ditambahkan',
-        body: 'Keterangan pada task "${task.namaTugas}": $keterangan',
+        body:
+            'Keterangan baru telah ditambahkan pada task "${task.namaTugas}". '
+            'Task ini dipimpin oleh ${task.namaPM} dengan PIC ${task.pic}. '
+            'Keterangan: $keterangan. '
+            'Silakan periksa detail task untuk informasi lebih lanjut.',
         data: {
           'type': 'add_keterangan',
           'taskId': task.uid ?? '',
@@ -287,7 +303,10 @@ class TaskNotificationService {
       // Kirim notifikasi FCM
       await _sendFCMToUsers(
         title: 'Bukti Diunggah',
-        body: 'Bukti untuk task "${task.namaTugas}" telah berhasil diunggah.',
+        body:
+            'Bukti telah berhasil diunggah untuk task "${task.namaTugas}". '
+            'Task ini dipimpin oleh ${task.namaPM} dengan PIC ${task.pic}. '
+            'Silakan periksa detail task untuk melihat bukti yang telah diunggah.',
         data: {
           'type': 'upload_bukti',
           'taskId': task.uid ?? '',
@@ -310,7 +329,10 @@ class TaskNotificationService {
       // Kirim notifikasi FCM
       await _sendFCMToUsers(
         title: 'Task Selesai',
-        body: 'Task "${task.namaTugas}" telah selesai.',
+        body:
+            'Task "${task.namaTugas}" telah selesai dilaksanakan. '
+            'Task ini dipimpin oleh ${task.namaPM} dengan PIC ${task.pic}. '
+            'Terima kasih atas kerja keras dan dedikasi yang telah diberikan dalam menyelesaikan task ini.',
         data: {
           'type': 'task_selesai',
           'taskId': task.uid ?? '',

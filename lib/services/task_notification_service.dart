@@ -11,14 +11,25 @@ class TaskNotificationService {
   final FCMService _fcmService = FCMService();
   final Set<String> _processedNotifications = {};
 
-  // Dapatkan semua user dengan role yang relevan (PM, PIC, Admin)
+  // Dapatkan semua user dengan role yang relevan (PM, Admin, dan 10 PIC)
   Future<List<String>> _getRelevantUserIds() async {
     try {
       final usersQuery = await _firestore.collection('users').get();
       return usersQuery.docs
           .where((doc) {
             final role = doc.data()['role'] as String?;
-            return role == 'pm' || role == 'pic' || role == 'admin';
+            return role == 'pm' ||
+                role == 'admin' ||
+                role == 'ACARA' ||
+                role == 'Souvenir' ||
+                role == 'CPW' ||
+                role == 'CPP' ||
+                role == 'Registrasi' ||
+                role == 'Dekorasi' ||
+                role == 'Catering' ||
+                role == 'FOH' ||
+                role == 'Runner' ||
+                role == 'Talent';
           })
           .map((doc) => doc.id)
           .toList();
@@ -36,7 +47,18 @@ class TaskNotificationService {
         final role = userData['role'] as String?;
 
         // Lewati jika role tidak relevan
-        if (role != 'pm' && role != 'pic' && role != 'admin') {
+        if (role != 'pm' &&
+            role != 'admin' &&
+            role != 'ACARA' &&
+            role != 'Souvenir' &&
+            role != 'CPW' &&
+            role != 'CPP' &&
+            role != 'Registrasi' &&
+            role != 'Dekorasi' &&
+            role != 'Catering' &&
+            role != 'FOH' &&
+            role != 'Runner' &&
+            role != 'Talent') {
           continue;
         }
 

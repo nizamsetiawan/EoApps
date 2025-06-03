@@ -4,7 +4,7 @@
 // 1. Form login dengan validasi email dan password
 // 2. Integrasi dengan Firebase Authentication
 // 3. Penyimpanan FCM token untuk notifikasi
-// 4. Redirect ke halaman sesuai role pengguna (Admin, PM, PIC)
+// 4. Redirect ke halaman sesuai role pengguna (Admin, PM, dan 10 PIC)
 import 'package:firebase_ui_auth/firebase_ui_auth.dart';
 import 'package:flutter/material.dart';
 import '../data/dummy_users.dart';

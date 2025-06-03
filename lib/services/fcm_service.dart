@@ -309,15 +309,23 @@ class FCMService {
       final usersQuery = await _firestore.collection('users').get();
       Map<String, List<Map<String, dynamic>>> roleTokens = {
         'pm': [],
-        'pic': [],
         'admin': [],
+        'ACARA': [],
+        'Souvenir': [],
+        'CPW': [],
+        'CPP': [],
+        'Registrasi': [],
+        'Dekorasi': [],
+        'Catering': [],
+        'FOH': [],
+        'Runner': [],
+        'Talent': [],
       };
 
       for (var doc in usersQuery.docs) {
         final userData = doc.data();
         final role = userData['role'] as String?;
-        final token =
-            userData['fcmToken'] as String?; // Menggunakan fcmToken tunggal
+        final token = userData['fcmToken'] as String?;
         final email = userData['email'] as String?;
 
         print('Memproses user:');
@@ -354,7 +362,20 @@ class FCMService {
       return roleTokens;
     } catch (e) {
       print('Error saat mengambil token: $e');
-      return {'pm': [], 'pic': [], 'admin': []};
+      return {
+        'pm': [],
+        'admin': [],
+        'ACARA': [],
+        'Souvenir': [],
+        'CPW': [],
+        'CPP': [],
+        'Registrasi': [],
+        'Dekorasi': [],
+        'Catering': [],
+        'FOH': [],
+        'Runner': [],
+        'Talent': [],
+      };
     }
   }
 }

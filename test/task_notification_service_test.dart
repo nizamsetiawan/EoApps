@@ -236,31 +236,40 @@ void main() {
       test(
         'should schedule task reminder notifications with correct intervals',
         () async {
+          // Buat task dengan waktu yang pasti
+          final now = DateTime.now();
+          final taskStartTime = now.add(const Duration(minutes: 10));
           final task = createTestTask(
-            tanggal: DateTime.now().add(const Duration(minutes: 10)),
+            tanggal: taskStartTime,
+            jamMulai: '${taskStartTime.hour}:${taskStartTime.minute}',
           );
 
+          // Setup mock untuk menerima pemanggilan registerOneOffTask
           when(
             mockWorkmanager.registerOneOffTask(
               any,
-              any,
+              'taskNotificationTask',
               initialDelay: anyNamed('initialDelay'),
               constraints: anyNamed('constraints'),
               inputData: anyNamed('inputData'),
             ),
           ).thenAnswer((_) async => true);
 
+          // Panggil method yang akan diuji
           await taskScheduler.scheduleTaskReminders(task);
 
+          // Verifikasi bahwa registerOneOffTask dipanggil untuk setiap reminder
           verify(
             mockWorkmanager.registerOneOffTask(
               any,
-              any,
+              'taskNotificationTask',
               initialDelay: anyNamed('initialDelay'),
               constraints: anyNamed('constraints'),
               inputData: anyNamed('inputData'),
             ),
-          ).called(4);
+          ).called(
+            4,
+          ); // Harus dipanggil 4 kali: 3 reminder + 1 notifikasi mulai
         },
       );
 

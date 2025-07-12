@@ -245,19 +245,14 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                 jamSelesai: _jamSelesai,
                                 namaPM: _namaPM,
                                 pic: _pic,
-                                status: 'pending',
+                                status: 'not complete',
                               );
 
                               // Menyimpan tugas ke Firestore
                               final taskId = await addTask(task);
 
                               if (taskId != null) {
-                                // Mengirim notifikasi tugas baru
-                                final taskNotificationService =
-                                    TaskNotificationService();
-                                await taskNotificationService.notifyNewTask(
-                                  task,
-                                );
+                                // Notifikasi sudah ditangani di addTask
 
                                 if (mounted) {
                                   // Menampilkan dialog sukses
@@ -359,7 +354,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                                     const SizedBox(width: 12),
                                                     Expanded(
                                                       child: Text(
-                                                        'Task telah berhasil dibuat dan dapat dilihat di menu Task',
+                                                        'Task telah berhasil dibuat dan menunggu approval dari Project Manager',
                                                         style: TextStyle(
                                                           fontSize: 14,
                                                           color:

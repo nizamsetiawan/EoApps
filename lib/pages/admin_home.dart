@@ -7,6 +7,8 @@ import 'login_page.dart'; // pastikan ini sesuai struktur project kamu
 import '../data/dummy_data_client.dart';
 import '../services/task_notification_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/notification.dart';
+import 'package:intl/intl.dart';
 
 // =========== ADMIN HOME PAGE CLASS =============
 // Kelas utama untuk halaman admin yang menangani semua fungsionalitas admin
@@ -23,6 +25,8 @@ class AdminHomePageState extends State<AdminHomePage> {
   String _currentPage = 'menu';
   // Key untuk validasi form
   final _formKey = GlobalKey<FormState>();
+  // Filter notifikasi
+  String _selectedNotificationFilter = 'Task baru dibuat';
 
   // Variabel untuk menyimpan data form tugas
   String _namaTugas = '';
@@ -294,19 +298,14 @@ class AdminHomePageState extends State<AdminHomePage> {
                                   jamSelesai: _jamSelesai,
                                   namaPM: _namaPM,
                                   pic: _pic,
-                                  status: 'pending',
+                                  status: 'not complete',
                                 );
 
                                 // Menyimpan tugas ke Firestore
                                 final taskId = await addTask(task);
 
                                 if (taskId != null) {
-                                  // Mengirim notifikasi tugas baru
-                                  final taskNotificationService =
-                                      TaskNotificationService();
-                                  await taskNotificationService.notifyNewTask(
-                                    task,
-                                  );
+                                  // Notifikasi sudah ditangani di addTask
 
                                   // Tampilkan dialog sukses
                                   if (mounted) {
@@ -413,7 +412,7 @@ class AdminHomePageState extends State<AdminHomePage> {
                                                       const SizedBox(width: 12),
                                                       Expanded(
                                                         child: Text(
-                                                          'Task telah berhasil dibuat dan dapat dilihat di menu Task',
+                                                          'Task telah berhasil dibuat dan menunggu approval dari PM',
                                                           style: TextStyle(
                                                             fontSize: 14,
                                                             color:
@@ -879,146 +878,71 @@ class AdminHomePageState extends State<AdminHomePage> {
                       ],
                     ),
                     const SizedBox(height: 20),
-                    // Second Row - Create Data Client
-                    _buildMenuCard(
-                      icon: Icons.person_add,
-                      title: 'Tambah Data Client',
-                      onTap: () async {
-                        // Cek status task dan kelengkapan data
-                        final tasksSnapshot =
-                            await FirebaseFirestore.instance
-                                .collection('tasks')
-                                .get();
+                    // Second Row - Notifications and Create Data Client
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Expanded(
+                          child: _buildMenuCard(
+                            icon: Icons.notifications,
+                            title: 'Notifikasi',
+                            onTap:
+                                () => setState(
+                                  () => _currentPage = 'notifications',
+                                ),
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: _buildMenuCard(
+                            icon: Icons.person_add,
+                            title: 'Tambah Data Client',
+                            onTap: () async {
+                              // Cek status task dan kelengkapan data
+                              final tasksSnapshot =
+                                  await FirebaseFirestore.instance
+                                      .collection('tasks')
+                                      .get();
 
-                        bool canAddClient = true;
-                        String errorMessage = '';
+                              bool canAddClient = true;
+                              String errorMessage = '';
 
-                        for (var doc in tasksSnapshot.docs) {
-                          final data = doc.data();
-                          if (data['status'] != 'done') {
-                            canAddClient = false;
-                            errorMessage =
-                                'Tidak dapat menambahkan data client karena masih ada task yang belum selesai';
-                            break;
-                          }
-                          if (data['keterangan'] == null ||
-                              data['keterangan'].toString().isEmpty ||
-                              data['bukti'] == null ||
-                              data['bukti'].toString().isEmpty) {
-                            canAddClient = false;
-                            errorMessage =
-                                'Tidak dapat menambahkan data client karena masih ada task yang belum memiliki keterangan dan bukti lengkap';
-                            break;
-                          }
-                        }
+                              for (var doc in tasksSnapshot.docs) {
+                                final data = doc.data();
+                                if (data['status'] != 'done') {
+                                  canAddClient = false;
+                                  errorMessage =
+                                      'Tidak dapat menambahkan data client karena masih ada task yang belum selesai';
+                                  break;
+                                }
+                                if (data['keterangan'] == null ||
+                                    data['keterangan'].toString().isEmpty ||
+                                    data['bukti'] == null ||
+                                    data['bukti'].toString().isEmpty) {
+                                  canAddClient = false;
+                                  errorMessage =
+                                      'Tidak dapat menambahkan data client karena masih ada task yang belum memiliki keterangan dan bukti lengkap';
+                                  break;
+                                }
+                              }
 
-                        if (!canAddClient) {
-                          if (mounted) {
-                            showDialog(
-                              context: context,
-                              barrierDismissible: false,
-                              builder:
-                                  (_) => AlertDialog(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
+                              if (!canAddClient) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(errorMessage),
+                                      backgroundColor: Colors.red,
                                     ),
-                                    title: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        const Text(
-                                          "Peringatan",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.red,
-                                          ),
-                                        ),
-                                        const Icon(
-                                          Icons.warning_amber_rounded,
-                                          color: Colors.red,
-                                          size: 28,
-                                        ),
-                                      ],
-                                    ),
-                                    content: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          errorMessage,
-                                          style: const TextStyle(fontSize: 16),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                        const SizedBox(height: 20),
-                                        Container(
-                                          padding: const EdgeInsets.all(16),
-                                          decoration: BoxDecoration(
-                                            color: Colors.red.withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                            border: Border.all(
-                                              color: Colors.red.withOpacity(
-                                                0.3,
-                                              ),
-                                            ),
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              const Icon(
-                                                Icons.info_outline,
-                                                color: Colors.red,
-                                                size: 24,
-                                              ),
-                                              const SizedBox(width: 12),
-                                              Expanded(
-                                                child: Text(
-                                                  'Pastikan semua task sudah selesai dan memiliki keterangan serta bukti yang lengkap',
-                                                  style: TextStyle(
-                                                    fontSize: 14,
-                                                    color: Colors.red[700],
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(height: 20),
-                                        ElevatedButton(
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.red,
-                                            foregroundColor: Colors.white,
-                                            minimumSize: const Size(
-                                              double.infinity,
-                                              45,
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                          ),
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                          },
-                                          child: const Text(
-                                            "OK",
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                            );
-                            return;
-                          }
-                        }
+                                  );
+                                }
+                                return;
+                              }
 
-                        // Jika semua pengecekan berhasil, buka form tambah client
-                        setState(() => _currentPage = 'create_client');
-                      },
-                      isFullWidth: true,
+                              setState(() => _currentPage = 'create_client');
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -2066,7 +1990,7 @@ class AdminHomePageState extends State<AdminHomePage> {
                                                     jamSelesai: _jamSelesai,
                                                     namaPM: _namaPM,
                                                     pic: _pic,
-                                                    status: 'pending',
+                                                    status: 'waiting approval',
                                                   );
 
                                                   // Menyimpan tugas ke Firestore
@@ -2075,11 +1999,7 @@ class AdminHomePageState extends State<AdminHomePage> {
                                                   );
 
                                                   if (taskId != null) {
-                                                    // Mengirim notifikasi tugas baru
-                                                    final taskNotificationService =
-                                                        TaskNotificationService();
-                                                    await taskNotificationService
-                                                        .notifyNewTask(task);
+                                                    // Tidak perlu mengirim notifikasi lagi, sudah ditangani di addTask()
 
                                                     // Tampilkan dialog sukses
                                                     if (mounted) {
@@ -2389,6 +2309,273 @@ class AdminHomePageState extends State<AdminHomePage> {
     );
   }
 
+  // =========== NOTIFICATIONS PAGE =============
+  // Halaman untuk menampilkan notifikasi
+  Widget _buildNotificationsPage() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: DropdownButton<String>(
+                    value: _selectedNotificationFilter,
+                    isExpanded: true,
+                    underline: const SizedBox(),
+                    items:
+                        [
+                          'Task baru dibuat',
+                          'Task Pengingat',
+                          'Task pending',
+                          'Task ditolak',
+                          'Task Selesai',
+                          'Semua',
+                        ].map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        setState(() {
+                          _selectedNotificationFilter = newValue;
+                        });
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: StreamBuilder<QuerySnapshot>(
+            stream:
+                FirebaseFirestore.instance
+                    .collection('notifications')
+                    .where('userIds')
+                    .orderBy('timestamp', descending: true)
+                    .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return const Center(child: Text('Terjadi kesalahan'));
+              }
+
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const Center(
+                  child: Text(
+                    'Belum ada notifikasi',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                );
+              }
+
+              var filteredDocs =
+                  snapshot.data!.docs.where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final type = data['type'] as String? ?? '';
+
+                    if (_selectedNotificationFilter == 'Semua') return true;
+
+                    switch (_selectedNotificationFilter) {
+                      case 'Task baru dibuat':
+                        return type == 'task_created_admin' ||
+                            type == 'task_approved_by_pm';
+                      case 'Task Pengingat':
+                        return type == 'reminder';
+                      case 'Task pending':
+                        return type == 'need_pm_validation' ||
+                            type == 'upload_bukti' ||
+                            type == 'need_pm_approval';
+                      case 'Task ditolak':
+                        return type == 'task_rejected_by_pm';
+                      case 'Task Selesai':
+                        return type == 'task_selesai' ||
+                            type == 'task_validated_by_pm';
+                      default:
+                        return true;
+                    }
+                  }).toList();
+
+              if (filteredDocs.isEmpty) {
+                return Center(
+                  child: Text(
+                    'Tidak ada notifikasi untuk filter: $_selectedNotificationFilter',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: filteredDocs.length,
+                itemBuilder: (context, index) {
+                  final notification = NotificationModel.fromFirestore(
+                    filteredDocs[index],
+                  );
+                  return _buildNotificationCard(notification);
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNotificationCard(NotificationModel notification) {
+    IconData iconData;
+    Color iconColor;
+
+    switch (notification.type) {
+      case 'task_created':
+        iconData = Icons.add_task;
+        iconColor = Colors.green;
+        break;
+      case 'reminder':
+        iconData = Icons.alarm;
+        iconColor = Colors.orange;
+        break;
+      case 'status_changed':
+        iconData = Icons.update;
+        iconColor = Colors.blue;
+        break;
+      case 'upload_bukti':
+        iconData = Icons.upload_file;
+        iconColor = Colors.purple;
+        break;
+      case 'task_selesai':
+        iconData = Icons.check_circle;
+        iconColor = Colors.green;
+        break;
+      case 'task_created_admin':
+        iconData = Icons.admin_panel_settings;
+        iconColor = Colors.indigo;
+        break;
+      case 'need_pm_approval':
+        iconData = Icons.pending_actions;
+        iconColor = Colors.orange;
+        break;
+      case 'task_approved_by_pm':
+        iconData = Icons.approval;
+        iconColor = Colors.blue;
+        break;
+      case 'need_pm_validation':
+        iconData = Icons.verified_user;
+        iconColor = Colors.purple;
+        break;
+      case 'task_validated_by_pm':
+        iconData = Icons.verified;
+        iconColor = Colors.green;
+        break;
+      case 'task_rejected_by_pm':
+        iconData = Icons.cancel;
+        iconColor = Colors.red;
+        break;
+      case 'task_rekap':
+        iconData = Icons.analytics;
+        iconColor = Colors.indigo;
+        break;
+      default:
+        iconData = Icons.notifications;
+        iconColor = Colors.grey;
+    }
+
+    return Dismissible(
+      key: Key(notification.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        color: Colors.red,
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      onDismissed: (direction) async {
+        try {
+          await FirebaseFirestore.instance
+              .collection('notifications')
+              .doc(notification.id)
+              .delete();
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Notifikasi berhasil dihapus'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+            );
+          }
+        }
+      },
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 16),
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(iconData, color: iconColor, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      notification.title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      notification.body,
+                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      DateFormat(
+                        'dd MMM yyyy, HH:mm',
+                      ).format(notification.timestamp),
+                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // =========== BUILD =============
   @override
   Widget build(BuildContext context) {
@@ -2402,6 +2589,9 @@ class AdminHomePageState extends State<AdminHomePage> {
         break;
       case 'create_client':
         appBarTitle = 'Tambah Data Client';
+        break;
+      case 'notifications':
+        appBarTitle = 'Notifikasi';
         break;
       default:
         appBarTitle = 'Admin Menu';
@@ -2418,7 +2608,8 @@ class AdminHomePageState extends State<AdminHomePage> {
         leading:
             (_currentPage == 'task' ||
                     _currentPage == 'client' ||
-                    _currentPage == 'create_client')
+                    _currentPage == 'create_client' ||
+                    _currentPage == 'notifications')
                 ? IconButton(
                   icon: const Icon(Icons.arrow_back, color: Colors.white),
                   tooltip: 'Back to Menu',
@@ -2468,6 +2659,8 @@ class AdminHomePageState extends State<AdminHomePage> {
                     ? _buildTugasForm()
                     : _currentPage == 'client'
                     ? _buildDataClientPage()
+                    : _currentPage == 'notifications'
+                    ? _buildNotificationsPage()
                     : _buildCreateClientForm(),
           ),
           if (_isLoading)

@@ -33,7 +33,7 @@ class _PICHomePageState extends State<PICHomePage> {
   final Map<String, bool> _isUploading = {};
   final FirebaseAuth _auth = FirebaseAuth.instance;
   User? _currentUser;
-  String _selectedNotificationFilter = 'Semua';
+  String _selectedNotificationFilter = 'Task baru dibuat';
 
   int _selectedIndex = 0;
 
@@ -551,106 +551,44 @@ class _PICHomePageState extends State<PICHomePage> {
                           ),
                           const SizedBox(height: 16),
 
+                          // PIC hanya viewer, tidak bisa ubah status
+                          // Status ditampilkan sebagai text saja
                           Container(
+                            width: double.infinity,
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: _getStatusColor(
+                                task.status,
+                              ).withOpacity(0.1),
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
-                                color: Colors.grey.withOpacity(0.2),
+                                color: _getStatusColor(
+                                  task.status,
+                                ).withOpacity(0.3),
                               ),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            child: Row(
                               children: [
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.person,
-                                      size: 16,
-                                      color: Colors.grey,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'PIC: ${task.pic}',
-                                      style: const TextStyle(fontSize: 16),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.assignment,
-                                      size: 16,
-                                      color: Colors.grey,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Status: ${task.status}',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: _getStatusColor(task.status),
-                                        fontWeight: FontWeight.bold,
+                                _getStatusIcon(task.status),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Status: ${task.status}',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: _getStatusColor(task.status),
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          Row(
-                            children:
-                                ['not complete', 'pending', 'done'].map((
-                                  status,
-                                ) {
-                                  return Expanded(
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 4,
-                                      ),
-                                      child: ElevatedButton.icon(
-                                        onPressed: () async {
-                                          if (task.uid != null) {
-                                            await setStatus(task.uid!, status);
-                                          }
-                                        },
-                                        icon: Icon(
-                                          status == 'done'
-                                              ? Icons.check_circle
-                                              : status == 'pending'
-                                              ? Icons.hourglass_empty
-                                              : Icons.cancel_outlined,
-                                          size: 16,
-                                        ),
-                                        label: Text(
-                                          status,
-                                          style: const TextStyle(fontSize: 12),
-                                        ),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor:
-                                              task.status == status
-                                                  ? _getStatusColor(status)
-                                                  : Colors.grey[200],
-                                          foregroundColor:
-                                              task.status == status
-                                                  ? Colors.white
-                                                  : Colors.grey[600],
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 8,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
                           ),
                           const SizedBox(height: 16),
 
@@ -914,7 +852,51 @@ class _PICHomePageState extends State<PICHomePage> {
                               ],
                             ),
 
-                          if (task.bukti == null || task.bukti!.isEmpty)
+                          // Pesan khusus untuk status pending
+                          if (task.status == 'pending')
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color.fromARGB(
+                                  255,
+                                  219,
+                                  172,
+                                  30,
+                                ).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: const Color.fromARGB(
+                                    255,
+                                    219,
+                                    172,
+                                    30,
+                                  ),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.hourglass_empty,
+                                    color: Color.fromARGB(255, 219, 172, 30),
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'Menunggu validasi PM',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color.fromARGB(255, 219, 172, 30),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                          // Tombol Upload Bukti hanya muncul jika belum upload dan status not complete
+                          if ((task.bukti == null || task.bukti!.isEmpty) &&
+                              task.status == 'not complete')
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton.icon(
@@ -996,7 +978,7 @@ class _PICHomePageState extends State<PICHomePage> {
         iconData = Icons.cancel;
         break;
       case 'pending':
-        iconData = Icons.pending;
+        iconData = Icons.hourglass_empty;
         break;
       default:
         iconData = Icons.help;
@@ -1262,12 +1244,12 @@ class _PICHomePageState extends State<PICHomePage> {
                     underline: const SizedBox(),
                     items:
                         [
-                          'Semua',
-                          'Task Baru',
-                          'Pengingat',
-                          'Status Berubah',
-                          'Bukti Diunggah',
+                          'Task baru dibuat',
+                          'Task Pengingat',
+                          'Task pending',
+                          'Task ditolak',
                           'Task Selesai',
+                          'Semua',
                         ].map((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
@@ -1321,16 +1303,20 @@ class _PICHomePageState extends State<PICHomePage> {
                     if (_selectedNotificationFilter == 'Semua') return true;
 
                     switch (_selectedNotificationFilter) {
-                      case 'Task Baru':
-                        return type == 'task_created';
-                      case 'Pengingat':
+                      case 'Task baru dibuat':
+                        return type == 'task_created_admin' ||
+                            type == 'task_approved_by_pm';
+                      case 'Task Pengingat':
                         return type == 'reminder';
-                      case 'Status Berubah':
-                        return type == 'status_changed';
-                      case 'Bukti Diunggah':
-                        return type == 'upload_bukti';
+                      case 'Task pending':
+                        return type == 'need_pm_validation' ||
+                            type == 'upload_bukti' ||
+                            type == 'need_pm_approval';
+                      case 'Task ditolak':
+                        return type == 'task_rejected_by_pm';
                       case 'Task Selesai':
-                        return type == 'task_selesai';
+                        return type == 'task_selesai' ||
+                            type == 'task_validated_by_pm';
                       default:
                         return true;
                     }
@@ -1386,6 +1372,34 @@ class _PICHomePageState extends State<PICHomePage> {
       case 'task_selesai':
         iconData = Icons.check_circle;
         iconColor = Colors.green;
+        break;
+      case 'task_created_admin':
+        iconData = Icons.admin_panel_settings;
+        iconColor = Colors.indigo;
+        break;
+      case 'need_pm_approval':
+        iconData = Icons.pending_actions;
+        iconColor = Colors.orange;
+        break;
+      case 'task_approved_by_pm':
+        iconData = Icons.approval;
+        iconColor = Colors.blue;
+        break;
+      case 'need_pm_validation':
+        iconData = Icons.verified_user;
+        iconColor = Colors.purple;
+        break;
+      case 'task_validated_by_pm':
+        iconData = Icons.verified;
+        iconColor = Colors.green;
+        break;
+      case 'task_rejected_by_pm':
+        iconData = Icons.cancel;
+        iconColor = Colors.red;
+        break;
+      case 'task_rekap':
+        iconData = Icons.analytics;
+        iconColor = Colors.indigo;
         break;
       default:
         iconData = Icons.notifications;
@@ -1508,6 +1522,181 @@ class _PICHomePageState extends State<PICHomePage> {
 
   Future<void> _uploadEvidence(Task task) async {
     try {
+      // Validasi: Task yang sudah "done" tidak bisa upload bukti
+      if (task.status == 'done') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                const Text(
+                  'Task yang sudah selesai tidak dapat upload bukti lagi',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            margin: const EdgeInsets.all(8),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+
+      // Konfirmasi jika sudah ada bukti sebelumnya
+      if (task.bukti != null && task.bukti!.isNotEmpty) {
+        final confirmed = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder:
+              (_) => AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                title: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "Konfirmasi",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Color.fromARGB(255, 33, 83, 36),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color.fromARGB(
+                          255,
+                          33,
+                          83,
+                          36,
+                        ).withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.help_outline,
+                        color: Color.fromARGB(255, 33, 83, 36),
+                        size: 28,
+                      ),
+                    ),
+                  ],
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Bukti sebelumnya akan diganti. Apakah Anda yakin ingin upload bukti baru?',
+                      style: TextStyle(fontSize: 16),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color.fromARGB(
+                          255,
+                          33,
+                          83,
+                          36,
+                        ).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color.fromARGB(
+                            255,
+                            33,
+                            83,
+                            36,
+                          ).withOpacity(0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.info_outline,
+                            color: Color.fromARGB(255, 33, 83, 36),
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'Bukti lama akan dihapus dan diganti dengan yang baru.',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color.fromARGB(255, 33, 83, 36),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(
+                                color: Color.fromARGB(255, 33, 83, 36),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text(
+                              "Batal",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Color.fromARGB(255, 33, 83, 36),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color.fromARGB(
+                                255,
+                                33,
+                                83,
+                                36,
+                              ),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text(
+                              "Upload Ulang",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+        );
+        if (confirmed != true) {
+          return;
+        }
+      }
+
       setState(() {
         _isUploading[task.uid!] = true;
       });
@@ -1529,10 +1718,11 @@ class _PICHomePageState extends State<PICHomePage> {
       final imageUrl = await ImageService.uploadImage(File(image.path));
 
       if (imageUrl != null) {
+        // Update bukti dan ubah status menjadi pending
         await FirebaseFirestore.instance
             .collection('tasks')
             .doc(task.uid!)
-            .update({'bukti': imageUrl});
+            .update({'bukti': imageUrl, 'status': 'pending'});
 
         setState(() {
           _isEditingNotes[task.uid!] = false;
@@ -1547,9 +1737,14 @@ class _PICHomePageState extends State<PICHomePage> {
               children: [
                 const Icon(Icons.check_circle, color: Colors.white, size: 20),
                 const SizedBox(width: 12),
-                const Text(
-                  'Bukti berhasil disimpan',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                Text(
+                  task.bukti != null && task.bukti!.isNotEmpty
+                      ? 'Berhasil diupload ulang'
+                      : 'Berhasil disimpan',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -1571,7 +1766,7 @@ class _PICHomePageState extends State<PICHomePage> {
                 const SizedBox(width: 12),
                 const Text(
                   'Gagal mengupload bukti',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
                 ),
               ],
             ),
@@ -1593,8 +1788,8 @@ class _PICHomePageState extends State<PICHomePage> {
               const Icon(Icons.error, color: Colors.white, size: 20),
               const SizedBox(width: 12),
               const Text(
-                'Terjadi kesalahan saat mengupload bukti',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                'Terjadi kesalahan',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
               ),
             ],
           ),
@@ -1611,6 +1806,33 @@ class _PICHomePageState extends State<PICHomePage> {
       setState(() {
         _isUploading[task.uid!] = false;
       });
+    }
+  }
+
+  String getNamaPICFromVendor(String vendor) {
+    switch (vendor) {
+      case 'ACARA':
+        return 'Kenongo';
+      case 'Souvenir':
+        return 'Elfiana Elza';
+      case 'CPW':
+        return 'Lutfi';
+      case 'CPP':
+        return 'Zidane';
+      case 'Registrasi':
+        return 'Lurry';
+      case 'Dekorasi':
+        return 'Septiana';
+      case 'Catering':
+        return 'Fadhilla Agustin';
+      case 'FOH':
+        return 'Ryan';
+      case 'Runner':
+        return 'Maldi Ramdani Fahrian';
+      case 'Talent':
+        return 'Septianati Talia';
+      default:
+        return vendor;
     }
   }
 
@@ -1738,11 +1960,15 @@ class _PICHomePageState extends State<PICHomePage> {
                                                     color: Colors.grey,
                                                   ),
                                                   const SizedBox(width: 4),
-                                                  Text(
-                                                    '${task.jamMulai} - ${task.jamSelesai}',
-                                                    style: const TextStyle(
-                                                      fontSize: 14,
-                                                      color: Colors.grey,
+                                                  Expanded(
+                                                    child: Text(
+                                                      '${task.jamMulai} - ${task.jamSelesai}',
+                                                      style: const TextStyle(
+                                                        fontSize: 14,
+                                                        color: Colors.grey,
+                                                      ),
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
                                                     ),
                                                   ),
                                                 ],
@@ -1766,6 +1992,7 @@ class _PICHomePageState extends State<PICHomePage> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
+                                          // Info PIC
                                           Row(
                                             children: [
                                               const Icon(
@@ -1774,101 +2001,358 @@ class _PICHomePageState extends State<PICHomePage> {
                                                 color: Colors.grey,
                                               ),
                                               const SizedBox(width: 8),
-                                              Text(
-                                                'PIC: ${task.pic}',
-                                                style: const TextStyle(
-                                                  fontSize: 16,
+                                              Expanded(
+                                                child: Text(
+                                                  'Nama PIC : ${getNamaPICFromVendor(task.pic)}',
+                                                  style: const TextStyle(
+                                                    fontSize: 16,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
                                               ),
                                             ],
                                           ),
-                                          const SizedBox(height: 8),
+                                          const SizedBox(height: 4),
+                                          // Info Vendor
                                           Row(
                                             children: [
                                               const Icon(
-                                                Icons.assignment,
+                                                Icons.business,
                                                 size: 16,
                                                 color: Colors.grey,
                                               ),
                                               const SizedBox(width: 8),
-                                              Text(
-                                                'Status: ${task.status}',
-                                                style: TextStyle(
-                                                  fontSize: 16,
-                                                  color: _getStatusColor(
-                                                    task.status,
+                                              Expanded(
+                                                child: Text(
+                                                  'Vendor : ${task.pic}',
+                                                  style: const TextStyle(
+                                                    fontSize: 16,
                                                   ),
-                                                  fontWeight: FontWeight.bold,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
                                               ),
                                             ],
                                           ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Row(
-                                      children:
-                                          [
-                                            'not complete',
-                                            'pending',
-                                            'done',
-                                          ].map((status) {
-                                            return Expanded(
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 4,
-                                                    ),
-                                                child: ElevatedButton.icon(
-                                                  onPressed: () async {
-                                                    if (task.uid != null) {
-                                                      await setStatus(
-                                                        task.uid!,
-                                                        status,
-                                                      );
-                                                    }
-                                                  },
-                                                  icon: Icon(
-                                                    status == 'done'
-                                                        ? Icons.check_circle
-                                                        : status == 'pending'
-                                                        ? Icons.hourglass_empty
-                                                        : Icons.cancel_outlined,
-                                                    size: 16,
-                                                  ),
-                                                  label: Text(
-                                                    status,
-                                                    style: const TextStyle(
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                  style: ElevatedButton.styleFrom(
-                                                    backgroundColor:
-                                                        task.status == status
-                                                            ? _getStatusColor(
-                                                              status,
-                                                            )
-                                                            : Colors.grey[200],
-                                                    foregroundColor:
-                                                        task.status == status
-                                                            ? Colors.white
-                                                            : Colors.grey[600],
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          vertical: 8,
-                                                        ),
-                                                    shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            8,
-                                                          ),
-                                                    ),
-                                                  ),
+                                          const SizedBox(height: 14),
+                                          // Status Progress
+                                          const Text(
+                                            'Status Progress',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 10),
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 20,
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                _buildStatusStep(
+                                                  icon: Icons.cancel,
+                                                  label: 'Not Complete',
+                                                  isActive:
+                                                      task.status ==
+                                                      'not complete',
+                                                  isDone:
+                                                      task.status ==
+                                                          'pending' ||
+                                                      task.status == 'done',
+                                                  color: Colors.red,
+                                                ),
+                                                _buildArrow(
+                                                  isActive:
+                                                      task.status ==
+                                                          'pending' ||
+                                                      task.status == 'done',
+                                                ),
+                                                _buildStatusStep(
+                                                  icon: Icons.hourglass_empty,
+                                                  label: 'Pending',
+                                                  isActive:
+                                                      task.status == 'pending',
+                                                  isDone: task.status == 'done',
+                                                  color: Colors.orange,
+                                                ),
+                                                _buildArrow(
+                                                  isActive:
+                                                      task.status == 'done',
+                                                ),
+                                                _buildStatusStep(
+                                                  icon: Icons.check_circle,
+                                                  label: 'Done',
+                                                  isActive:
+                                                      task.status == 'done',
+                                                  isDone: false,
+                                                  color: Colors.green,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(height: 16),
+                                          // Pesan status di bawah progress bar
+                                          if (task.status == 'done')
+                                            Container(
+                                              width: double.infinity,
+                                              padding: const EdgeInsets.all(12),
+                                              decoration: BoxDecoration(
+                                                color: const Color.fromARGB(
+                                                  255,
+                                                  33,
+                                                  83,
+                                                  36,
+                                                ).withOpacity(0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                border: Border.all(
+                                                  color: const Color.fromARGB(
+                                                    255,
+                                                    33,
+                                                    83,
+                                                    36,
+                                                  ).withOpacity(0.3),
                                                 ),
                                               ),
-                                            );
-                                          }).toList(),
+                                              child: Row(
+                                                children: [
+                                                  const Icon(
+                                                    Icons.check_circle,
+                                                    color: Color.fromARGB(
+                                                      255,
+                                                      33,
+                                                      83,
+                                                      36,
+                                                    ),
+                                                    size: 20,
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Text(
+                                                      'Task telah selesai dan divalidasi oleh Project Manager',
+                                                      style: const TextStyle(
+                                                        fontSize: 14,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                        color: Color.fromARGB(
+                                                          255,
+                                                          33,
+                                                          83,
+                                                          36,
+                                                        ),
+                                                      ),
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      maxLines: 2,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          if (task.status == 'pending')
+                                            Container(
+                                              width: double.infinity,
+                                              padding: const EdgeInsets.all(12),
+                                              decoration: BoxDecoration(
+                                                color: const Color.fromARGB(
+                                                  255,
+                                                  219,
+                                                  172,
+                                                  30,
+                                                ).withOpacity(0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                border: Border.all(
+                                                  color: const Color.fromARGB(
+                                                    255,
+                                                    219,
+                                                    172,
+                                                    30,
+                                                  ).withOpacity(0.3),
+                                                ),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  const Icon(
+                                                    Icons.hourglass_empty,
+                                                    color: Color.fromARGB(
+                                                      255,
+                                                      219,
+                                                      172,
+                                                      30,
+                                                    ),
+                                                    size: 20,
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Text(
+                                                      'Menunggu validasi Project Manager',
+                                                      style: const TextStyle(
+                                                        fontSize: 14,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                        color: Color.fromARGB(
+                                                          255,
+                                                          219,
+                                                          172,
+                                                          30,
+                                                        ),
+                                                      ),
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      maxLines: 2,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          // Pesan status untuk status 'not complete'
+                                          if (task.status ==
+                                              'not complete') ...[
+                                            if (task.bukti == null ||
+                                                task.bukti!.isEmpty)
+                                              Container(
+                                                width: double.infinity,
+                                                padding: const EdgeInsets.all(
+                                                  12,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.red.withOpacity(
+                                                    0.1,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                  border: Border.all(
+                                                    color: Colors.red
+                                                        .withOpacity(0.3),
+                                                  ),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.info_outline,
+                                                      color: Colors.red,
+                                                      size: 20,
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Expanded(
+                                                      child: Text(
+                                                        'Silakan upload bukti untuk melakukan validasi.',
+                                                        style: const TextStyle(
+                                                          fontSize: 14,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                          color: Colors.red,
+                                                        ),
+                                                        overflow:
+                                                            TextOverflow
+                                                                .ellipsis,
+                                                        maxLines: 2,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            if (task.bukti != null &&
+                                                task.bukti!.isNotEmpty)
+                                              Container(
+                                                width: double.infinity,
+                                                padding: const EdgeInsets.all(
+                                                  12,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.red.withOpacity(
+                                                    0.1,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                  border: Border.all(
+                                                    color: Colors.red
+                                                        .withOpacity(0.3),
+                                                  ),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.cancel,
+                                                      color: Colors.red,
+                                                      size: 20,
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Expanded(
+                                                      child: Text(
+                                                        'Task ditolak oleh Project Manager. Silakan upload bukti ulang.',
+                                                        style: const TextStyle(
+                                                          fontSize: 14,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                          color: Colors.red,
+                                                        ),
+                                                        overflow:
+                                                            TextOverflow
+                                                                .ellipsis,
+                                                        maxLines: 2,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                          ],
+                                          const SizedBox(height: 10),
+                                          // Pesan status jika keterangan belum diisi
+                                          if ((task.keterangan == null ||
+                                                  task.keterangan!.isEmpty) &&
+                                              (task.status == 'not complete' ||
+                                                  task.status == 'pending'))
+                                            Container(
+                                              width: double.infinity,
+                                              padding: const EdgeInsets.all(12),
+                                              decoration: BoxDecoration(
+                                                color: Colors.blue.withOpacity(
+                                                  0.1,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                border: Border.all(
+                                                  color: Colors.blue
+                                                      .withOpacity(0.3),
+                                                ),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  const Icon(
+                                                    Icons.warning_amber_rounded,
+                                                    color: Colors.blue,
+                                                    size: 20,
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Text(
+                                                      'Keterangan belum diisi.',
+                                                      style: const TextStyle(
+                                                        fontSize: 14,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                        color: Colors.blue,
+                                                      ),
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      maxLines: 2,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          const SizedBox(height: 10),
+                                          // ... lanjut ke widget lain seperti keterangan, bukti, dsb ...
+                                        ],
+                                      ),
                                     ),
                                     const SizedBox(height: 16),
                                     if (task.keterangan != null &&
@@ -1961,9 +2445,62 @@ class _PICHomePageState extends State<PICHomePage> {
                                                   ),
                                                 ),
                                               ),
+
                                               const SizedBox(width: 12),
                                               ElevatedButton.icon(
                                                 onPressed: () async {
+                                                  // Validasi: Task yang sudah "done" tidak bisa update keterangan
+                                                  if (task.status == 'done') {
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    ).showSnackBar(
+                                                      SnackBar(
+                                                        content: Row(
+                                                          children: [
+                                                            const Icon(
+                                                              Icons.error,
+                                                              color:
+                                                                  Colors.white,
+                                                              size: 20,
+                                                            ),
+                                                            const SizedBox(
+                                                              width: 12,
+                                                            ),
+                                                            const Text(
+                                                              'Task yang sudah selesai tidak dapat diubah keterangannya',
+                                                              style: TextStyle(
+                                                                fontSize: 14,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        backgroundColor:
+                                                            Colors.red,
+                                                        behavior:
+                                                            SnackBarBehavior
+                                                                .floating,
+                                                        shape: RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                10,
+                                                              ),
+                                                        ),
+                                                        margin:
+                                                            const EdgeInsets.all(
+                                                              8,
+                                                            ),
+                                                        duration:
+                                                            const Duration(
+                                                              seconds: 3,
+                                                            ),
+                                                      ),
+                                                    );
+                                                    return;
+                                                  }
+
                                                   final keterangan =
                                                       _keteranganControllers[task
                                                               .hashCode]
@@ -2065,7 +2602,7 @@ class _PICHomePageState extends State<PICHomePage> {
                                           ),
                                         ],
                                       )
-                                    else
+                                    else if (task.status != 'done')
                                       SizedBox(
                                         width: double.infinity,
                                         child: ElevatedButton.icon(
@@ -2182,8 +2719,9 @@ class _PICHomePageState extends State<PICHomePage> {
                                           const SizedBox(height: 16),
                                         ],
                                       ),
-                                    if (task.bukti == null ||
-                                        task.bukti!.isEmpty)
+
+                                    // Tombol Upload Bukti muncul jika status not complete (termasuk untuk upload ulang)
+                                    if (task.status == 'not complete')
                                       SizedBox(
                                         width: double.infinity,
                                         child: ElevatedButton.icon(
@@ -2210,6 +2748,9 @@ class _PICHomePageState extends State<PICHomePage> {
                                           label: Text(
                                             _isUploading[task.uid!] == true
                                                 ? 'Mengupload...'
+                                                : (task.bukti != null &&
+                                                    task.bukti!.isNotEmpty)
+                                                ? 'Upload Ulang'
                                                 : 'Upload Bukti',
                                           ),
                                           style: ElevatedButton.styleFrom(
@@ -2369,7 +2910,53 @@ class _PICHomePageState extends State<PICHomePage> {
     }
 
     return query.snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) => Task.fromFirestore(doc)).toList();
+      return snapshot.docs
+          .map((doc) => Task.fromFirestore(doc))
+          .where(
+            (task) =>
+                task.status == 'not complete' ||
+                task.status == 'pending' ||
+                task.status == 'done',
+          ) // Tampilkan task yang sudah diapprove PM
+          .toList();
     });
+  }
+
+  Widget _buildStatusStep({
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required bool isDone,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Icon(
+          icon,
+          color: isActive || isDone ? color : Colors.grey[400],
+          size: 28,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+            color: isActive || isDone ? color : Colors.grey[400],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildArrow({required bool isActive}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Icon(
+        Icons.arrow_forward,
+        size: 20,
+        color: isActive ? Colors.black87 : Colors.grey[300],
+      ),
+    );
   }
 }

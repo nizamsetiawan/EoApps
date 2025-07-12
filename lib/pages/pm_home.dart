@@ -41,7 +41,7 @@ class _PMHomePageState extends State<PMHomePage> {
   bool _isDateRangeMode = false;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   User? _currentUser;
-  String _selectedNotificationFilter = 'Semua';
+  String _selectedNotificationFilter = 'Task baru dibuat';
 
   @override
   void initState() {
@@ -683,6 +683,7 @@ class _PMHomePageState extends State<PMHomePage> {
                                               36,
                                             ),
                                           ),
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                         const SizedBox(height: 4),
                                         Row(
@@ -693,11 +694,14 @@ class _PMHomePageState extends State<PMHomePage> {
                                               color: Colors.grey,
                                             ),
                                             const SizedBox(width: 4),
-                                            Text(
-                                              '${task.jamMulai} - ${task.jamSelesai}',
-                                              style: const TextStyle(
-                                                fontSize: 14,
-                                                color: Colors.grey,
+                                            Expanded(
+                                              child: Text(
+                                                '${task.jamMulai} - ${task.jamSelesai}',
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  color: Colors.grey,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
                                           ],
@@ -729,9 +733,34 @@ class _PMHomePageState extends State<PMHomePage> {
                                           color: Colors.grey,
                                         ),
                                         const SizedBox(width: 8),
-                                        Text(
-                                          'PIC: ${task.pic}',
-                                          style: const TextStyle(fontSize: 16),
+                                        Expanded(
+                                          child: Text(
+                                            'Nama PIC : ${getNamaPICFromVendor(task.pic)}',
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.business,
+                                          size: 16,
+                                          color: Colors.grey,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'Vendor : ${task.pic}',
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -744,12 +773,17 @@ class _PMHomePageState extends State<PMHomePage> {
                                           color: Colors.grey,
                                         ),
                                         const SizedBox(width: 8),
-                                        Text(
-                                          'Status: ${task.status}',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            color: _getStatusColor(task.status),
-                                            fontWeight: FontWeight.bold,
+                                        Expanded(
+                                          child: Text(
+                                            'Status: ${task.status}',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              color: _getStatusColor(
+                                                task.status,
+                                              ),
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
                                       ],
@@ -759,51 +793,529 @@ class _PMHomePageState extends State<PMHomePage> {
                               ),
                               const SizedBox(height: 16),
 
-                              Row(
-                                children:
-                                    ['not complete', 'pending', 'done'].map((
-                                      status,
-                                    ) {
-                                      return Expanded(
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 4,
+                              // Tampilkan tombol approval jika status waiting approval
+                              if (task.status == 'waiting approval')
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: ElevatedButton.icon(
+                                        onPressed: () async {
+                                          if (task.uid != null) {
+                                            await setStatus(
+                                              task.uid!,
+                                              'not complete',
+                                              previousStatus: task.status,
+                                            );
+                                          }
+                                        },
+                                        icon: const Icon(
+                                          Icons.approval,
+                                          size: 16,
+                                        ),
+                                        label: const Text(
+                                          'Approve',
+                                          style: TextStyle(fontSize: 12),
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color.fromARGB(
+                                            255,
+                                            33,
+                                            83,
+                                            36,
                                           ),
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 8,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              // Tampilkan tombol status untuk task yang sudah diapprove
+                              else if (task.status != 'done') ...[
+                                const SizedBox(height: 12),
+                                Row(
+                                  children:
+                                      ['not complete', 'pending', 'done'].map((
+                                        status,
+                                      ) {
+                                        final isTaskDone =
+                                            task.status == 'done';
+                                        final isCurrentStatus =
+                                            task.status == status;
+                                        return Expanded(
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 4,
+                                            ),
+                                            child: ElevatedButton.icon(
+                                              onPressed:
+                                                  isTaskDone
+                                                      ? null
+                                                      : () async {
+                                                        if (task.uid != null) {
+                                                          await setStatus(
+                                                            task.uid!,
+                                                            status,
+                                                            previousStatus:
+                                                                task.status,
+                                                          );
+                                                        }
+                                                      },
+                                              icon: Icon(
+                                                status == 'done'
+                                                    ? Icons.check_circle
+                                                    : status == 'pending'
+                                                    ? Icons.hourglass_empty
+                                                    : Icons.cancel_outlined,
+                                                size: 16,
+                                              ),
+                                              label: Text(
+                                                status,
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    isTaskDone
+                                                        ? Colors.grey[300]
+                                                        : task.status == status
+                                                        ? _getStatusColor(
+                                                          status,
+                                                        )
+                                                        : Colors.grey[200],
+                                                foregroundColor:
+                                                    isTaskDone
+                                                        ? Colors.grey[500]
+                                                        : task.status == status
+                                                        ? Colors.white
+                                                        : Colors.grey[600],
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 8,
+                                                    ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+
+                              // Tombol validasi khusus untuk PM ketika task pending
+                              if (task.status == 'pending')
+                                Column(
+                                  children: [
+                                    Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: const Color.fromARGB(
+                                          255,
+                                          219,
+                                          172,
+                                          30,
+                                        ).withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: const Color.fromARGB(
+                                            255,
+                                            219,
+                                            172,
+                                            30,
+                                          ).withOpacity(0.3),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.hourglass_empty,
+                                            color: Color.fromARGB(
+                                              255,
+                                              219,
+                                              172,
+                                              30,
+                                            ),
+                                            size: 20,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              'PIC telah mengupload bukti. Silakan lakukan validasi atau penolakan.',
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                                color: Color.fromARGB(
+                                                  255,
+                                                  219,
+                                                  172,
+                                                  30,
+                                                ),
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                              maxLines: 2,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Row(
+                                      children: [
+                                        Expanded(
                                           child: ElevatedButton.icon(
                                             onPressed: () async {
-                                              if (task.uid != null) {
+                                              // Konfirmasi validasi dengan format adminhome
+                                              final confirmed = await showDialog<
+                                                bool
+                                              >(
+                                                context: context,
+                                                barrierDismissible: false,
+                                                builder:
+                                                    (_) => AlertDialog(
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              16,
+                                                            ),
+                                                      ),
+                                                      title: Row(
+                                                        mainAxisAlignment:
+                                                            MainAxisAlignment
+                                                                .spaceBetween,
+                                                        children: [
+                                                          const Text(
+                                                            "Konfirmasi",
+                                                            style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              color:
+                                                                  Color.fromARGB(
+                                                                    255,
+                                                                    33,
+                                                                    83,
+                                                                    36,
+                                                                  ),
+                                                            ),
+                                                          ),
+                                                          Container(
+                                                            padding:
+                                                                const EdgeInsets.all(
+                                                                  8,
+                                                                ),
+                                                            decoration: BoxDecoration(
+                                                              color:
+                                                                  Color.fromARGB(
+                                                                    255,
+                                                                    33,
+                                                                    83,
+                                                                    36,
+                                                                  ).withOpacity(
+                                                                    0.1,
+                                                                  ),
+                                                              shape:
+                                                                  BoxShape
+                                                                      .circle,
+                                                            ),
+                                                            child: const Icon(
+                                                              Icons
+                                                                  .help_outline,
+                                                              color:
+                                                                  Color.fromARGB(
+                                                                    255,
+                                                                    33,
+                                                                    83,
+                                                                    36,
+                                                                  ),
+                                                              size: 28,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      content: Column(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        children: [
+                                                          Text(
+                                                            'Apakah Anda yakin ingin memvalidasi task "${task.namaTugas}"?',
+                                                            style:
+                                                                const TextStyle(
+                                                                  fontSize: 16,
+                                                                ),
+                                                            textAlign:
+                                                                TextAlign
+                                                                    .center,
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 20,
+                                                          ),
+                                                          Container(
+                                                            padding:
+                                                                const EdgeInsets.all(
+                                                                  16,
+                                                                ),
+                                                            decoration: BoxDecoration(
+                                                              color:
+                                                                  Color.fromARGB(
+                                                                    255,
+                                                                    33,
+                                                                    83,
+                                                                    36,
+                                                                  ).withOpacity(
+                                                                    0.1,
+                                                                  ),
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    12,
+                                                                  ),
+                                                              border: Border.all(
+                                                                color:
+                                                                    Color.fromARGB(
+                                                                      255,
+                                                                      33,
+                                                                      83,
+                                                                      36,
+                                                                    ).withOpacity(
+                                                                      0.3,
+                                                                    ),
+                                                              ),
+                                                            ),
+                                                            child: Row(
+                                                              children: [
+                                                                const Icon(
+                                                                  Icons
+                                                                      .info_outline,
+                                                                  color:
+                                                                      Color.fromARGB(
+                                                                        255,
+                                                                        33,
+                                                                        83,
+                                                                        36,
+                                                                      ),
+                                                                  size: 24,
+                                                                ),
+                                                                const SizedBox(
+                                                                  width: 12,
+                                                                ),
+                                                                Expanded(
+                                                                  child: Text(
+                                                                    'Task akan dianggap selesai dan divalidasi oleh Project Manager.',
+                                                                    style: TextStyle(
+                                                                      fontSize:
+                                                                          14,
+                                                                      color:
+                                                                          Color.fromARGB(
+                                                                            255,
+                                                                            33,
+                                                                            83,
+                                                                            36,
+                                                                          ),
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 20,
+                                                          ),
+                                                          Row(
+                                                            children: [
+                                                              Expanded(
+                                                                child: OutlinedButton(
+                                                                  style: OutlinedButton.styleFrom(
+                                                                    side: const BorderSide(
+                                                                      color:
+                                                                          Color.fromARGB(
+                                                                            255,
+                                                                            33,
+                                                                            83,
+                                                                            36,
+                                                                          ),
+                                                                    ),
+                                                                    padding:
+                                                                        const EdgeInsets.symmetric(
+                                                                          vertical:
+                                                                              12,
+                                                                        ),
+                                                                    shape: RoundedRectangleBorder(
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
+                                                                            12,
+                                                                          ),
+                                                                    ),
+                                                                  ),
+                                                                  onPressed:
+                                                                      () => Navigator.pop(
+                                                                        context,
+                                                                        false,
+                                                                      ),
+                                                                  child: const Text(
+                                                                    "Batal",
+                                                                    style: TextStyle(
+                                                                      fontSize:
+                                                                          16,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                      color:
+                                                                          Color.fromARGB(
+                                                                            255,
+                                                                            33,
+                                                                            83,
+                                                                            36,
+                                                                          ),
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                              const SizedBox(
+                                                                width: 12,
+                                                              ),
+                                                              Expanded(
+                                                                child: ElevatedButton(
+                                                                  style: ElevatedButton.styleFrom(
+                                                                    backgroundColor:
+                                                                        const Color.fromARGB(
+                                                                          255,
+                                                                          33,
+                                                                          83,
+                                                                          36,
+                                                                        ),
+                                                                    foregroundColor:
+                                                                        Colors
+                                                                            .white,
+                                                                    padding:
+                                                                        const EdgeInsets.symmetric(
+                                                                          vertical:
+                                                                              12,
+                                                                        ),
+                                                                    shape: RoundedRectangleBorder(
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
+                                                                            12,
+                                                                          ),
+                                                                    ),
+                                                                  ),
+                                                                  onPressed:
+                                                                      () => Navigator.pop(
+                                                                        context,
+                                                                        true,
+                                                                      ),
+                                                                  child: const Text(
+                                                                    "Validasi",
+                                                                    style: TextStyle(
+                                                                      fontSize:
+                                                                          16,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                              );
+                                              if (confirmed == true &&
+                                                  task.uid != null) {
+                                                final scaffoldMessenger =
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    );
                                                 await setStatus(
                                                   task.uid!,
-                                                  status,
+                                                  'done',
+                                                  previousStatus: task.status,
                                                 );
+                                                if (mounted) {
+                                                  scaffoldMessenger.showSnackBar(
+                                                    SnackBar(
+                                                      content: Row(
+                                                        children: [
+                                                          const Icon(
+                                                            Icons.check_circle,
+                                                            color: Colors.white,
+                                                            size: 20,
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 12,
+                                                          ),
+                                                          const Text(
+                                                            'Task berhasil divalidasi',
+                                                            style: TextStyle(
+                                                              fontSize: 14,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w500,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      backgroundColor:
+                                                          const Color.fromARGB(
+                                                            255,
+                                                            33,
+                                                            83,
+                                                            36,
+                                                          ),
+                                                      behavior:
+                                                          SnackBarBehavior
+                                                              .floating,
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              10,
+                                                            ),
+                                                      ),
+                                                      margin:
+                                                          const EdgeInsets.all(
+                                                            8,
+                                                          ),
+                                                      duration: const Duration(
+                                                        seconds: 2,
+                                                      ),
+                                                    ),
+                                                  );
+                                                }
                                               }
                                             },
-                                            icon: Icon(
-                                              status == 'done'
-                                                  ? Icons.check_circle
-                                                  : status == 'pending'
-                                                  ? Icons.hourglass_empty
-                                                  : Icons.cancel_outlined,
+                                            icon: const Icon(
+                                              Icons.check_circle,
                                               size: 16,
                                             ),
-                                            label: Text(
-                                              status,
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                              ),
+                                            label: const Text(
+                                              'Validasi',
+                                              style: TextStyle(fontSize: 12),
                                             ),
                                             style: ElevatedButton.styleFrom(
                                               backgroundColor:
-                                                  task.status == status
-                                                      ? _getStatusColor(status)
-                                                      : Colors.grey[200],
-                                              foregroundColor:
-                                                  task.status == status
-                                                      ? Colors.white
-                                                      : Colors.grey[600],
+                                                  const Color.fromARGB(
+                                                    255,
+                                                    33,
+                                                    83,
+                                                    36,
+                                                  ),
+                                              foregroundColor: Colors.white,
                                               padding:
                                                   const EdgeInsets.symmetric(
-                                                    vertical: 8,
+                                                    vertical: 12,
                                                   ),
                                               shape: RoundedRectangleBorder(
                                                 borderRadius:
@@ -812,10 +1324,364 @@ class _PMHomePageState extends State<PMHomePage> {
                                             ),
                                           ),
                                         ),
-                                      );
-                                    }).toList(),
-                              ),
-                              const SizedBox(height: 16),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: ElevatedButton.icon(
+                                            onPressed: () async {
+                                              // Konfirmasi penolakan dengan format adminhome
+                                              final confirmed = await showDialog<
+                                                bool
+                                              >(
+                                                context: context,
+                                                barrierDismissible: false,
+                                                builder:
+                                                    (_) => AlertDialog(
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              16,
+                                                            ),
+                                                      ),
+                                                      title: Row(
+                                                        mainAxisAlignment:
+                                                            MainAxisAlignment
+                                                                .spaceBetween,
+                                                        children: [
+                                                          const Text(
+                                                            "Konfirmasi",
+                                                            style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              color: Colors.red,
+                                                            ),
+                                                          ),
+                                                          Container(
+                                                            padding:
+                                                                const EdgeInsets.all(
+                                                                  8,
+                                                                ),
+                                                            decoration:
+                                                                BoxDecoration(
+                                                                  color: Colors
+                                                                      .red
+                                                                      .withOpacity(
+                                                                        0.1,
+                                                                      ),
+                                                                  shape:
+                                                                      BoxShape
+                                                                          .circle,
+                                                                ),
+                                                            child: const Icon(
+                                                              Icons
+                                                                  .help_outline,
+                                                              color: Colors.red,
+                                                              size: 28,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      content: Column(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        children: [
+                                                          Text(
+                                                            'Apakah Anda yakin ingin menolak task "${task.namaTugas}"?',
+                                                            style:
+                                                                const TextStyle(
+                                                                  fontSize: 16,
+                                                                ),
+                                                            textAlign:
+                                                                TextAlign
+                                                                    .center,
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 20,
+                                                          ),
+                                                          Container(
+                                                            padding:
+                                                                const EdgeInsets.all(
+                                                                  16,
+                                                                ),
+                                                            decoration: BoxDecoration(
+                                                              color: Colors.red
+                                                                  .withOpacity(
+                                                                    0.1,
+                                                                  ),
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    12,
+                                                                  ),
+                                                              border: Border.all(
+                                                                color: Colors
+                                                                    .red
+                                                                    .withOpacity(
+                                                                      0.3,
+                                                                    ),
+                                                              ),
+                                                            ),
+                                                            child: Row(
+                                                              children: [
+                                                                const Icon(
+                                                                  Icons
+                                                                      .info_outline,
+                                                                  color:
+                                                                      Colors
+                                                                          .red,
+                                                                  size: 24,
+                                                                ),
+                                                                const SizedBox(
+                                                                  width: 12,
+                                                                ),
+                                                                Expanded(
+                                                                  child: Text(
+                                                                    'Task akan dikembalikan ke PIC untuk upload bukti ulang.',
+                                                                    style: TextStyle(
+                                                                      fontSize:
+                                                                          14,
+                                                                      color:
+                                                                          Colors
+                                                                              .red[700],
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 20,
+                                                          ),
+                                                          Row(
+                                                            children: [
+                                                              Expanded(
+                                                                child: OutlinedButton(
+                                                                  style: OutlinedButton.styleFrom(
+                                                                    side: const BorderSide(
+                                                                      color:
+                                                                          Colors
+                                                                              .red,
+                                                                    ),
+                                                                    padding:
+                                                                        const EdgeInsets.symmetric(
+                                                                          vertical:
+                                                                              12,
+                                                                        ),
+                                                                    shape: RoundedRectangleBorder(
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
+                                                                            12,
+                                                                          ),
+                                                                    ),
+                                                                  ),
+                                                                  onPressed:
+                                                                      () => Navigator.pop(
+                                                                        context,
+                                                                        false,
+                                                                      ),
+                                                                  child: const Text(
+                                                                    "Batal",
+                                                                    style: TextStyle(
+                                                                      fontSize:
+                                                                          16,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                      color:
+                                                                          Colors
+                                                                              .red,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                              const SizedBox(
+                                                                width: 12,
+                                                              ),
+                                                              Expanded(
+                                                                child: ElevatedButton(
+                                                                  style: ElevatedButton.styleFrom(
+                                                                    backgroundColor:
+                                                                        Colors
+                                                                            .red,
+                                                                    foregroundColor:
+                                                                        Colors
+                                                                            .white,
+                                                                    padding:
+                                                                        const EdgeInsets.symmetric(
+                                                                          vertical:
+                                                                              12,
+                                                                        ),
+                                                                    shape: RoundedRectangleBorder(
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
+                                                                            12,
+                                                                          ),
+                                                                    ),
+                                                                  ),
+                                                                  onPressed:
+                                                                      () => Navigator.pop(
+                                                                        context,
+                                                                        true,
+                                                                      ),
+                                                                  child: const Text(
+                                                                    "Tolak",
+                                                                    style: TextStyle(
+                                                                      fontSize:
+                                                                          16,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                              );
+                                              if (confirmed == true &&
+                                                  task.uid != null) {
+                                                final scaffoldMessenger =
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    );
+                                                await setStatus(
+                                                  task.uid!,
+                                                  'not complete',
+                                                  previousStatus: task.status,
+                                                );
+                                                if (mounted) {
+                                                  scaffoldMessenger.showSnackBar(
+                                                    SnackBar(
+                                                      content: Row(
+                                                        children: [
+                                                          const Icon(
+                                                            Icons.cancel,
+                                                            color: Colors.white,
+                                                            size: 20,
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 12,
+                                                          ),
+                                                          const Text(
+                                                            'Task ditolak. PIC diminta upload ulang.',
+                                                            style: TextStyle(
+                                                              fontSize: 14,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w500,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      backgroundColor:
+                                                          Colors.red,
+                                                      behavior:
+                                                          SnackBarBehavior
+                                                              .floating,
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              10,
+                                                            ),
+                                                      ),
+                                                      margin:
+                                                          const EdgeInsets.all(
+                                                            8,
+                                                          ),
+                                                      duration: const Duration(
+                                                        seconds: 3,
+                                                      ),
+                                                    ),
+                                                  );
+                                                }
+                                              }
+                                            },
+                                            icon: const Icon(
+                                              Icons.cancel,
+                                              size: 16,
+                                            ),
+                                            label: const Text(
+                                              'Tolak',
+                                              style: TextStyle(fontSize: 12),
+                                            ),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.red,
+                                              foregroundColor: Colors.white,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 12,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+                                  ],
+                                ),
+
+                              // Tampilkan pesan jika task sudah done
+                              if (task.status == 'done')
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: const Color.fromARGB(
+                                      255,
+                                      33,
+                                      83,
+                                      36,
+                                    ).withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: const Color.fromARGB(
+                                        255,
+                                        33,
+                                        83,
+                                        36,
+                                      ).withOpacity(0.3),
+                                    ),
+                                  ),
+
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.lock,
+                                        color: const Color.fromARGB(
+                                          255,
+                                          33,
+                                          83,
+                                          36,
+                                        ),
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Task telah selesai dan divalidasi. Status tidak dapat diubah lagi.',
+                                          style: const TextStyle(
+                                            color: Color.fromARGB(
+                                              255,
+                                              33,
+                                              83,
+                                              36,
+                                            ),
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 2,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              const SizedBox(height: 8),
 
                               if (task.keterangan != null &&
                                   task.keterangan!.isNotEmpty)
@@ -1078,11 +1944,15 @@ class _PMHomePageState extends State<PMHomePage> {
                                                   size: 40,
                                                 ),
                                                 const SizedBox(height: 8),
-                                                Text(
-                                                  'Gagal memuat gambar\n${error.toString()}',
-                                                  textAlign: TextAlign.center,
-                                                  style: const TextStyle(
-                                                    color: Colors.red,
+                                                Expanded(
+                                                  child: Text(
+                                                    'Gagal memuat gambar\n${error.toString()}',
+                                                    textAlign: TextAlign.center,
+                                                    style: const TextStyle(
+                                                      color: Colors.red,
+                                                    ),
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                   ),
                                                 ),
                                               ],
@@ -1155,63 +2025,47 @@ class _PMHomePageState extends State<PMHomePage> {
   Color _getStatusColor(String status) {
     switch (status) {
       case 'done':
-        return Color.fromARGB(255, 33, 83, 36);
+        return const Color.fromARGB(255, 33, 83, 36);
+      case 'waiting approval':
+        return Colors.orange;
       case 'not complete':
         return Colors.red;
       case 'pending':
-        return Color.fromARGB(255, 219, 172, 30);
+        return const Color.fromARGB(255, 219, 172, 30);
       default:
         return Colors.grey;
     }
   }
 
   Widget _getStatusIcon(String status) {
+    IconData iconData;
+    Color color = _getStatusColor(status);
+
     switch (status) {
       case 'done':
-        return Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.green.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.check_circle, color: Colors.green, size: 30),
-        );
+        iconData = Icons.check_circle;
+        break;
+      case 'waiting approval':
+        iconData = Icons.pending_actions;
+        break;
       case 'not complete':
-        return Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.red.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.cancel_outlined, color: Colors.red, size: 30),
-        );
+        iconData = Icons.cancel;
+        break;
       case 'pending':
-        return Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color.fromARGB(255, 219, 172, 30).withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(
-            Icons.hourglass_empty,
-            color: Color.fromARGB(255, 219, 172, 30),
-            size: 30,
-          ),
-        );
+        iconData = Icons.hourglass_empty;
+        break;
       default:
-        return Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.grey.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(
-            Icons.circle_outlined,
-            color: Colors.grey,
-            size: 30,
-          ),
-        );
+        iconData = Icons.help;
     }
+
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(iconData, color: color),
+    );
   }
 
   Widget _buildDataClientPage() {
@@ -1491,16 +2345,7 @@ class _PMHomePageState extends State<PMHomePage> {
         final avgTasksPerDay = totalTasks / daysDiff;
 
         final completedTasks =
-            tasks
-                .where(
-                  (task) =>
-                      task.status == 'done' &&
-                      task.bukti != null &&
-                      task.bukti!.isNotEmpty &&
-                      task.keterangan != null &&
-                      task.keterangan!.isNotEmpty,
-                )
-                .toList();
+            tasks.where((task) => task.status == 'done').toList();
 
         final tasksByPIC = <String, int>{};
         for (var task in tasks) {
@@ -1832,12 +2677,12 @@ class _PMHomePageState extends State<PMHomePage> {
                     underline: const SizedBox(),
                     items:
                         [
-                          'Semua',
-                          'Task Baru',
-                          'Pengingat',
-                          'Status Berubah',
-                          'Bukti Diunggah',
+                          'Task baru dibuat',
+                          'Task Pengingat',
+                          'Task pending',
+                          'Task ditolak',
                           'Task Selesai',
+                          'Semua',
                         ].map((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
@@ -1893,16 +2738,20 @@ class _PMHomePageState extends State<PMHomePage> {
                     if (_selectedNotificationFilter == 'Semua') return true;
 
                     switch (_selectedNotificationFilter) {
-                      case 'Task Baru':
-                        return type == 'task_created';
-                      case 'Pengingat':
+                      case 'Task baru dibuat':
+                        return type == 'task_created_admin' ||
+                            type == 'task_approved_by_pm';
+                      case 'Task Pengingat':
                         return type == 'reminder';
-                      case 'Status Berubah':
-                        return type == 'status_changed';
-                      case 'Bukti Diunggah':
-                        return type == 'upload_bukti';
+                      case 'Task pending':
+                        return type == 'need_pm_validation' ||
+                            type == 'upload_bukti' ||
+                            type == 'need_pm_approval';
+                      case 'Task ditolak':
+                        return type == 'task_rejected_by_pm';
                       case 'Task Selesai':
-                        return type == 'task_selesai';
+                        return type == 'task_selesai' ||
+                            type == 'task_validated_by_pm';
                       default:
                         return true;
                     }
@@ -1966,6 +2815,34 @@ class _PMHomePageState extends State<PMHomePage> {
       case 'task_selesai':
         iconData = Icons.check_circle;
         iconColor = Colors.green;
+        break;
+      case 'task_created_admin':
+        iconData = Icons.admin_panel_settings;
+        iconColor = Colors.indigo;
+        break;
+      case 'need_pm_approval':
+        iconData = Icons.pending_actions;
+        iconColor = Colors.orange;
+        break;
+      case 'task_approved_by_pm':
+        iconData = Icons.approval;
+        iconColor = Colors.blue;
+        break;
+      case 'need_pm_validation':
+        iconData = Icons.verified_user;
+        iconColor = Colors.purple;
+        break;
+      case 'task_validated_by_pm':
+        iconData = Icons.verified;
+        iconColor = Colors.green;
+        break;
+      case 'task_rejected_by_pm':
+        iconData = Icons.cancel;
+        iconColor = Colors.red;
+        break;
+      case 'task_rekap':
+        iconData = Icons.analytics;
+        iconColor = Colors.indigo;
         break;
       default:
         iconData = Icons.notifications;
@@ -2121,28 +2998,56 @@ class _PMHomePageState extends State<PMHomePage> {
         final taskNotificationService = TaskNotificationService();
         await taskNotificationService.notifyUploadBukti(task, imageUrl);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white, size: 20),
-                const SizedBox(width: 12),
-                const Text(
-                  'Bukti berhasil disimpan',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                ),
-              ],
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Bukti berhasil disimpan',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+              backgroundColor: const Color.fromARGB(255, 33, 83, 36),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              margin: const EdgeInsets.all(8),
+              duration: const Duration(seconds: 2),
             ),
-            backgroundColor: const Color.fromARGB(255, 33, 83, 36),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            margin: const EdgeInsets.all(8),
-            duration: const Duration(seconds: 2),
-          ),
-        );
+          );
+        }
       } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.error, color: Colors.white, size: 20),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Gagal mengupload bukti',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.red[700],
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              margin: const EdgeInsets.all(8),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -2150,7 +3055,7 @@ class _PMHomePageState extends State<PMHomePage> {
                 const Icon(Icons.error, color: Colors.white, size: 20),
                 const SizedBox(width: 12),
                 const Text(
-                  'Gagal mengupload bukti',
+                  'Terjadi kesalahan saat mengupload bukti',
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                 ),
               ],
@@ -2165,28 +3070,6 @@ class _PMHomePageState extends State<PMHomePage> {
           ),
         );
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.error, color: Colors.white, size: 20),
-              const SizedBox(width: 12),
-              const Text(
-                'Terjadi kesalahan saat mengupload bukti',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.red[700],
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          margin: const EdgeInsets.all(8),
-          duration: const Duration(seconds: 2),
-        ),
-      );
     } finally {
       setState(() {
         _isUploading[task.uid!] = false;
@@ -2206,6 +3089,66 @@ class _PMHomePageState extends State<PMHomePage> {
       return null;
     }
     return null;
+  }
+
+  String getNamaPICFromVendor(String vendor) {
+    switch (vendor) {
+      case 'ACARA':
+        return 'Kenongo';
+      case 'Souvenir':
+        return 'Elfiana Elza';
+      case 'CPW':
+        return 'Lutfi';
+      case 'CPP':
+        return 'Zidane';
+      case 'Registrasi':
+        return 'Lurry';
+      case 'Dekorasi':
+        return 'Septiana';
+      case 'Catering':
+        return 'Fadhilla Agustin';
+      case 'FOH':
+        return 'Ryan';
+      case 'Runner':
+        return 'Maldi Ramdani Fahrian';
+      case 'Talent':
+        return 'Septianati Talia';
+      default:
+        return vendor;
+    }
+  }
+
+  Stream<List<Task>> getTasksStream(DateTime selectedDate) {
+    final startOfDay = DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+      0,
+      0,
+      0,
+    );
+
+    final endOfDay = DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day + 1,
+      0,
+      0,
+      0,
+    );
+
+    // Query untuk PM - tampilkan semua status task termasuk yang menunggu approval
+    var query = FirebaseFirestore.instance
+        .collection('tasks')
+        .where(
+          'tanggal',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
+        )
+        .where('tanggal', isLessThan: Timestamp.fromDate(endOfDay));
+
+    return query.snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) => Task.fromFirestore(doc)).toList();
+    });
   }
 
   @override

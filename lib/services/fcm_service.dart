@@ -8,7 +8,8 @@ import 'dart:async';
 
 class FCMService {
   static const String _serverUrl =
-      'https://fcm-server-production-3ca1.up.railway.app';
+      // 'https://fcm-server-production-3ca1.up.railway.app';
+  'https://fcm-server-production-ec5b.up.railway.app';
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -17,7 +18,6 @@ class FCMService {
   // Inisialisasi FC
   Future<void> initialize() async {
     try {
-      print('Memulai inisialisasi FCM..');
 
       // Request permission dengan opsi yang lebih lengkap
       final settings = await _messaging.requestPermission(

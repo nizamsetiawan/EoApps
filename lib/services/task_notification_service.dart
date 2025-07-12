@@ -158,33 +158,184 @@ class TaskNotificationService {
   // Notifikasi task baru
   Future<void> notifyNewTask(Task task) async {
     try {
+      final taskId =
+          task.uid ?? DateTime.now().millisecondsSinceEpoch.toString();
+      final currentTimeFormatted = DateFormat('HH:mm').format(DateTime.now());
+      final taskDateFormatted = DateFormat('dd MMMM yyyy').format(task.tanggal);
+
+      // Kirim notifikasi FCM untuk task baru (tanpa pengingat)
+      await _sendFCMToUsers(
+        title: 'Task Baru Dibuat',
+        body:
+            'Task baru "${task.namaTugas}" telah dibuat oleh Project Manager ${task.namaPM} pada $currentTimeFormatted. '
+            'Task ini akan dilaksanakan pada tanggal $taskDateFormatted mulai pukul ${task.jamMulai} hingga ${task.jamSelesai}. '
+            'PIC yang ditunjuk adalah ${getNamaPICFromVendor(task.pic)}. '
+            'Task menunggu approval dari Project Manager sebelum dapat dikerjakan.',
+        data: {
+          'type': 'task_created',
+          'taskId': taskId,
+          'taskName': task.namaTugas,
+        },
+      );
+    } catch (e) {
+      // Abaikan error
+    }
+  }
+
+  // Notifikasi perubahan status
+  Future<void> notifyStatusChanged(Task task, String newStatus) async {
+    try {
+      final notificationId =
+          '${task.uid}_status_${DateTime.now().millisecondsSinceEpoch}'
+              .hashCode;
+
+      // Kirim notifikasi FCM
+      await _sendFCMToUsers(
+        title: 'Status Task Berubah',
+        body:
+            'Status task "${task.namaTugas}" telah berubah menjadi "$newStatus". '
+            'Task ini dipimpin oleh Project Manager ${task.namaPM} dengan PIC ${getNamaPICFromVendor(task.pic)}. '
+            'Silakan periksa detail task untuk informasi lebih lanjut mengenai perubahan status ini.',
+        data: {
+          'type': 'status_changed',
+          'taskId': task.uid ?? '',
+          'taskName': task.namaTugas,
+          'newStatus': newStatus,
+        },
+      );
+    } catch (e) {
+      // Abaikan error
+    }
+  }
+
+  // Notifikasi tambah keterangan
+  Future<void> notifyAddKeterangan(Task task, String keterangan) async {
+    try {
+      final notificationId =
+          '${task.uid}_keterangan_${DateTime.now().millisecondsSinceEpoch}'
+              .hashCode;
+
+      // Kirim notifikasi FCM
+      await _sendFCMToUsers(
+        title: 'Keterangan Ditambahkan',
+        body:
+            'Keterangan baru telah ditambahkan pada task "${task.namaTugas}". '
+            'Task ini dipimpin oleh Project Manager ${task.namaPM} dengan PIC ${getNamaPICFromVendor(task.pic)}. '
+            'Keterangan: $keterangan. '
+            'Silakan periksa detail task untuk informasi lebih lanjut.',
+        data: {
+          'type': 'add_keterangan',
+          'taskId': task.uid ?? '',
+          'taskName': task.namaTugas,
+          'keterangan': keterangan,
+        },
+      );
+    } catch (e) {
+      // Abaikan error
+    }
+  }
+
+  // Notifikasi upload bukti
+  Future<void> notifyUploadBukti(Task task, String buktiUrl) async {
+    try {
+      final notificationId =
+          '${task.uid}_bukti_${DateTime.now().millisecondsSinceEpoch}'.hashCode;
+
+      // Kirim notifikasi FCM
+      await _sendFCMToUsers(
+        title: 'Bukti Task Diupload',
+        body:
+            'PIC ${getNamaPICFromVendor(task.pic)} telah mengupload bukti untuk task "${task.namaTugas}". '
+            'Task ini dipimpin oleh Project Manager ${task.namaPM}. '
+            'Silakan periksa dan validasi bukti yang telah diupload.',
+        data: {
+          'type': 'upload_bukti',
+          'taskId': task.uid ?? '',
+          'taskName': task.namaTugas,
+          'buktiUrl': buktiUrl,
+        },
+      );
+    } catch (e) {
+      // Abaikan error
+    }
+  }
+
+  // Notifikasi task selesai
+  Future<void> notifyTaskSelesai(Task task) async {
+    try {
+      final notificationId =
+          '${task.uid}_selesai_${DateTime.now().millisecondsSinceEpoch}'
+              .hashCode;
+
+      // Kirim notifikasi FCM
+      await _sendFCMToUsers(
+        title: 'Task Selesai',
+        body:
+            'Task "${task.namaTugas}" telah selesai dilaksanakan. '
+            'Task ini dipimpin oleh ${task.namaPM} dengan PIC ${getNamaPICFromVendor(task.pic)}. '
+            'Terima kasih atas kerja keras dan dedikasi yang telah diberikan dalam menyelesaikan task ini.',
+        data: {
+          'type': 'task_selesai',
+          'taskId': task.uid ?? '',
+          'taskName': task.namaTugas,
+        },
+      );
+    } catch (e) {
+      // Abaikan error
+    }
+  }
+
+  // Notifikasi: Task baru dibuat, beritahu Admin
+  Future<void> notifyTaskCreatedToAdmin(Task task) async {
+    await _sendFCMToUsers(
+      title: 'Task Baru Dibuat',
+      body:
+          'Task "${task.namaTugas}" telah dibuat oleh ${task.namaPM} dan menunggu approval dari Project Manager. PIC yang ditunjuk adalah ${getNamaPICFromVendor(task.pic)}.',
+      data: {
+        'type': 'task_created_admin',
+        'taskId': task.uid ?? '',
+        'taskName': task.namaTugas,
+      },
+    );
+  }
+
+  // Notifikasi: Task baru butuh approval PM
+  Future<void> notifyNeedApprovalPM(Task task) async {
+    await _sendFCMToUsers(
+      title: 'Approval Task Diperlukan',
+      body:
+          'Task "${task.namaTugas}" yang dibuat oleh ${task.namaPM} membutuhkan approval dari Project Manager sebelum dapat dikerjakan oleh PIC ${getNamaPICFromVendor(task.pic)}.',
+      data: {
+        'type': 'need_pm_approval',
+        'taskId': task.uid ?? '',
+        'taskName': task.namaTugas,
+      },
+    );
+  }
+
+  // Notifikasi: Task sudah di-approve PM, PIC bisa mulai
+  Future<void> notifyTaskApprovedByPM(Task task) async {
+    try {
       final taskStartTime = _parseTaskTime(task.tanggal, task.jamMulai);
       if (taskStartTime != null) {
         final now = DateTime.now();
         final startTime = taskStartTime;
         final taskId =
             task.uid ?? DateTime.now().millisecondsSinceEpoch.toString();
-        final currentTimeFormatted = DateFormat('HH:mm').format(now);
-        final taskDateFormatted = DateFormat(
-          'dd MMMM yyyy',
-        ).format(task.tanggal);
 
-        // Kirim notifikasi FCM untuk task baru
+        // Kirim notifikasi FCM untuk task yang sudah di-approve
         await _sendFCMToUsers(
-          title: 'Task Baru Dibuat',
+          title: 'Task Siap Dikerjakan',
           body:
-              'Task baru "${task.namaTugas}" telah dibuat pada $currentTimeFormatted. '
-              'Task ini akan dilaksanakan pada tanggal $taskDateFormatted mulai pukul ${task.jamMulai} hingga ${task.jamSelesai}. '
-              'Project Manager yang bertanggung jawab adalah ${task.namaPM} dan PIC yang ditunjuk adalah ${task.pic}. '
-              'Silakan periksa detail task untuk informasi lebih lanjut.',
+              'Task "${task.namaTugas}" telah di-approve oleh Project Manager ${task.namaPM} dan siap dikerjakan oleh PIC ${getNamaPICFromVendor(task.pic)}. Silakan upload bukti setelah selesai.',
           data: {
-            'type': 'task_created',
+            'type': 'task_approved_by_pm',
             'taskId': taskId,
             'taskName': task.namaTugas,
           },
         );
 
-        // Jadwalkan pengingat
+        // Jadwalkan pengingat untuk task yang sudah di-approve
         final reminderIntervals = [6, 4, 2]; // dalam menit
         for (var minutesBeforeStart in reminderIntervals) {
           // Tambahkan margin 1 menit untuk memastikan notifikasi muncul tepat waktu
@@ -212,10 +363,10 @@ class TaskNotificationService {
             ),
             inputData: {
               'id': reminderId,
-              'title': 'Pengingat Task',
+              'title': 'Task Pengingat',
               'body':
                   'Pengingat: Task "${task.namaTugas}" akan dimulai dalam $minutesBeforeStart menit. '
-                  'Task ini dipimpin oleh ${task.namaPM} dan PIC ${task.pic}. '
+                  'Task ini dipimpin oleh Project Manager ${task.namaPM} dan PIC ${getNamaPICFromVendor(task.pic)}. '
                   'Silakan persiapkan diri Anda dan pastikan semua persiapan telah selesai.',
               'payload': taskId,
               'type': 'reminder',
@@ -248,7 +399,7 @@ class TaskNotificationService {
               'title': 'Task Dimulai',
               'body':
                   'Task "${task.namaTugas}" telah dimulai pada pukul ${task.jamMulai}. '
-                  'Task ini dipimpin oleh ${task.namaPM} dengan PIC ${task.pic}. '
+                  'Task ini dipimpin oleh Project Manager ${task.namaPM} dengan PIC ${getNamaPICFromVendor(task.pic)}. '
                   'Silakan mulai melaksanakan tugas Anda sesuai dengan rencana yang telah disusun.',
               'payload': taskId,
               'type': 'task_started',
@@ -263,107 +414,60 @@ class TaskNotificationService {
     }
   }
 
-  // Notifikasi perubahan status
-  Future<void> notifyStatusChanged(Task task, String newStatus) async {
-    try {
-      final notificationId =
-          '${task.uid}_status_${DateTime.now().millisecondsSinceEpoch}'
-              .hashCode;
-
-      // Kirim notifikasi FCM
-      await _sendFCMToUsers(
-        title: 'Status Task Berubah',
-        body:
-            'Status task "${task.namaTugas}" telah berubah menjadi "$newStatus". '
-            'Task ini dipimpin oleh ${task.namaPM} dengan PIC ${task.pic}. '
-            'Silakan periksa detail task untuk informasi lebih lanjut mengenai perubahan status ini.',
-        data: {
-          'type': 'status_changed',
-          'taskId': task.uid ?? '',
-          'taskName': task.namaTugas,
-          'newStatus': newStatus,
-        },
-      );
-    } catch (e) {
-      // Abaikan error
-    }
+  // Notifikasi: Task selesai, butuh validasi PM
+  Future<void> notifyNeedValidationPM(Task task) async {
+    await _sendFCMToUsers(
+      title: 'Validasi Task Diperlukan',
+      body:
+          'Task "${task.namaTugas}" telah selesai dikerjakan oleh PIC ${getNamaPICFromVendor(task.pic)} dan bukti telah diupload. Silakan validasi bukti yang telah diupload.',
+      data: {
+        'type': 'need_pm_validation',
+        'taskId': task.uid ?? '',
+        'taskName': task.namaTugas,
+      },
+    );
   }
 
-  // Notifikasi tambah keterangan
-  Future<void> notifyAddKeterangan(Task task, String keterangan) async {
-    try {
-      final notificationId =
-          '${task.uid}_keterangan_${DateTime.now().millisecondsSinceEpoch}'
-              .hashCode;
-
-      // Kirim notifikasi FCM
-      await _sendFCMToUsers(
-        title: 'Keterangan Ditambahkan',
-        body:
-            'Keterangan baru telah ditambahkan pada task "${task.namaTugas}". '
-            'Task ini dipimpin oleh ${task.namaPM} dengan PIC ${task.pic}. '
-            'Keterangan: $keterangan. '
-            'Silakan periksa detail task untuk informasi lebih lanjut.',
-        data: {
-          'type': 'add_keterangan',
-          'taskId': task.uid ?? '',
-          'taskName': task.namaTugas,
-          'keterangan': keterangan,
-        },
-      );
-    } catch (e) {
-      // Abaikan error
-    }
+  // Notifikasi: Task divalidasi PM, selesai
+  Future<void> notifyTaskValidatedByPM(Task task) async {
+    await _sendFCMToUsers(
+      title: 'Task Selesai & Divalidasi',
+      body:
+          'Task "${task.namaTugas}" telah divalidasi dan dinyatakan selesai oleh Project Manager ${task.namaPM}. Bukti yang diupload oleh PIC ${getNamaPICFromVendor(task.pic)} telah diterima dengan baik.',
+      data: {
+        'type': 'task_validated_by_pm',
+        'taskId': task.uid ?? '',
+        'taskName': task.namaTugas,
+      },
+    );
   }
 
-  // Notifikasi upload bukti
-  Future<void> notifyUploadBukti(Task task, String buktiUrl) async {
-    try {
-      final notificationId =
-          '${task.uid}_bukti_${DateTime.now().millisecondsSinceEpoch}'.hashCode;
-
-      // Kirim notifikasi FCM
-      await _sendFCMToUsers(
-        title: 'Bukti Diunggah',
-        body:
-            'Bukti telah berhasil diunggah untuk task "${task.namaTugas}". '
-            'Task ini dipimpin oleh ${task.namaPM} dengan PIC ${task.pic}. '
-            'Silakan periksa detail task untuk melihat bukti yang telah diunggah.',
-        data: {
-          'type': 'upload_bukti',
-          'taskId': task.uid ?? '',
-          'taskName': task.namaTugas,
-          'buktiUrl': buktiUrl,
-        },
-      );
-    } catch (e) {
-      // Abaikan error
-    }
+  // Notifikasi: Task ditolak PM, perlu upload ulang
+  Future<void> notifyTaskRejectedByPM(Task task) async {
+    await _sendFCMToUsers(
+      title: 'Task Ditolak - Upload Ulang Diperlukan',
+      body:
+          'Task "${task.namaTugas}" ditolak oleh Project Manager ${task.namaPM}. PIC ${getNamaPICFromVendor(task.pic)} perlu mengupload bukti yang lebih baik atau sesuai dengan standar yang diminta.',
+      data: {
+        'type': 'task_rejected_by_pm',
+        'taskId': task.uid ?? '',
+        'taskName': task.namaTugas,
+      },
+    );
   }
 
-  // Notifikasi task selesai
-  Future<void> notifyTaskSelesai(Task task) async {
-    try {
-      final notificationId =
-          '${task.uid}_selesai_${DateTime.now().millisecondsSinceEpoch}'
-              .hashCode;
-
-      // Kirim notifikasi FCM
-      await _sendFCMToUsers(
-        title: 'Task Selesai',
-        body:
-            'Task "${task.namaTugas}" telah selesai dilaksanakan. '
-            'Task ini dipimpin oleh ${task.namaPM} dengan PIC ${task.pic}. '
-            'Terima kasih atas kerja keras dan dedikasi yang telah diberikan dalam menyelesaikan task ini.',
-        data: {
-          'type': 'task_selesai',
-          'taskId': task.uid ?? '',
-          'taskName': task.namaTugas,
-        },
-      );
-    } catch (e) {
-      // Abaikan error
-    }
+  // Notifikasi: Task masuk rekap setelah validasi PM
+  Future<void> notifyTaskRekap(Task task) async {
+    await _sendFCMToUsers(
+      title: 'Task Masuk Rekap',
+      body:
+          'Task "${task.namaTugas}" telah selesai dan masuk ke dalam rekap task. Project Manager ${task.namaPM} dan PIC ${getNamaPICFromVendor(task.pic)} telah menyelesaikan task dengan baik.',
+      data: {
+        'type': 'task_rekap',
+        'taskId': task.uid ?? '',
+        'taskName': task.namaTugas,
+      },
+    );
   }
 
   // Parse waktu task
@@ -418,6 +522,33 @@ class TaskNotificationService {
       }
     } catch (e) {
       // Abaikan error
+    }
+  }
+
+  String getNamaPICFromVendor(String vendor) {
+    switch (vendor) {
+      case 'ACARA':
+        return 'Kenongo';
+      case 'Souvenir':
+        return 'Elfiana Elza';
+      case 'CPW':
+        return 'Lutfi';
+      case 'CPP':
+        return 'Zidane';
+      case 'Registrasi':
+        return 'Lurry';
+      case 'Dekorasi':
+        return 'Septiana';
+      case 'Catering':
+        return 'Fadhilla Agustin';
+      case 'FOH':
+        return 'Ryan';
+      case 'Runner':
+        return 'Maldi Ramdani Fahrian';
+      case 'Talent':
+        return 'Septianati Talia';
+      default:
+        return vendor;
     }
   }
 }

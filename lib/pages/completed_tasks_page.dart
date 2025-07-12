@@ -41,16 +41,7 @@ class _CompletedTasksPageState extends State<CompletedTasksPage> {
             .snapshots()
             .map(
               (snapshot) =>
-                  snapshot.docs
-                      .map((doc) => Task.fromFirestore(doc))
-                      .where(
-                        (task) =>
-                            task.keterangan != null &&
-                            task.keterangan!.isNotEmpty &&
-                            task.bukti != null &&
-                            task.bukti!.isNotEmpty,
-                      )
-                      .toList(),
+                  snapshot.docs.map((doc) => Task.fromFirestore(doc)).toList(),
             );
       }
     } else {
@@ -73,37 +64,19 @@ class _CompletedTasksPageState extends State<CompletedTasksPage> {
             .snapshots()
             .map(
               (snapshot) =>
-                  snapshot.docs
-                      .map((doc) => Task.fromFirestore(doc))
-                      .where(
-                        (task) =>
-                            task.keterangan != null &&
-                            task.keterangan!.isNotEmpty &&
-                            task.bukti != null &&
-                            task.bukti!.isNotEmpty,
-                      )
-                      .toList(),
+                  snapshot.docs.map((doc) => Task.fromFirestore(doc)).toList(),
             );
       }
     }
 
-    // Jika tidak ada filter, tampilkan semua task yang selesai dengan keterangan dan bukti
+    // Jika tidak ada filter, tampilkan semua task yang selesai
     return FirebaseFirestore.instance
         .collection('tasks')
         .where('status', isEqualTo: 'done')
         .snapshots()
         .map(
           (snapshot) =>
-              snapshot.docs
-                  .map((doc) => Task.fromFirestore(doc))
-                  .where(
-                    (task) =>
-                        task.keterangan != null &&
-                        task.keterangan!.isNotEmpty &&
-                        task.bukti != null &&
-                        task.bukti!.isNotEmpty,
-                  )
-                  .toList(),
+              snapshot.docs.map((doc) => Task.fromFirestore(doc)).toList(),
         );
   }
 
@@ -218,6 +191,33 @@ class _CompletedTasksPageState extends State<CompletedTasksPage> {
             ),
       ),
     );
+  }
+
+  String getNamaPICFromVendor(String vendor) {
+    switch (vendor) {
+      case 'ACARA':
+        return 'Kenongo';
+      case 'Souvenir':
+        return 'Elfiana Elza';
+      case 'CPW':
+        return 'Lutfi';
+      case 'CPP':
+        return 'Zidane';
+      case 'Registrasi':
+        return 'Lurry';
+      case 'Dekorasi':
+        return 'Septiana';
+      case 'Catering':
+        return 'Fadhilla Agustin';
+      case 'FOH':
+        return 'Ryan';
+      case 'Runner':
+        return 'Maldi Ramdani Fahrian';
+      case 'Talent':
+        return 'Septianati Talia';
+      default:
+        return vendor;
+    }
   }
 
   @override
@@ -409,13 +409,42 @@ class _CompletedTasksPageState extends State<CompletedTasksPage> {
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
+                                      const SizedBox(height: 16),
+                                      // Ganti info PIC menjadi dua baris: Nama PIC dan Vendor
+                                      Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.person,
+                                            size: 16,
+                                            color: Colors.grey,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'Nama PIC :  ${getNamaPICFromVendor(task.pic)}',
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                       const SizedBox(height: 4),
-                                      Text(
-                                        'PIC: ${task.pic}',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.grey[600],
-                                        ),
+                                      Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.business,
+                                            size: 16,
+                                            color: Colors.grey,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'Vendor :  ${task.pic}',
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
@@ -477,6 +506,32 @@ class _CompletedTasksPageState extends State<CompletedTasksPage> {
                                 child: Text(
                                   task.keterangan!,
                                   style: const TextStyle(fontSize: 14),
+                                ),
+                              ),
+                            ]
+                            // Jika keterangan null atau kosong, tampilkan pesan khusus
+                            else ...[
+                              const Text(
+                                'Keterangan:',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color.fromARGB(255, 33, 83, 36),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text(
+                                  'Keterangan belum ditambahkan oleh PIC.',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey,
+                                  ),
                                 ),
                               ),
                             ],

@@ -438,6 +438,24 @@ class _CompletedTasksPageState extends State<CompletedTasksPage> {
                                           ),
                                           const SizedBox(width: 8),
                                           Text(
+                                            'Nama Vendor :  ${task.vendor ?? task.pic}',
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.category,
+                                            size: 16,
+                                            color: Colors.grey,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
                                             'Vendor :  ${task.pic}',
                                             style: const TextStyle(
                                               fontSize: 14,

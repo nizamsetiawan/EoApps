@@ -169,7 +169,7 @@ class TaskNotificationService {
         body:
             'Task baru "${task.namaTugas}" telah dibuat oleh Project Manager ${task.namaPM} pada $currentTimeFormatted. '
             'Task ini akan dilaksanakan pada tanggal $taskDateFormatted mulai pukul ${task.jamMulai} hingga ${task.jamSelesai}. '
-            'PIC yang ditunjuk adalah ${getNamaPICFromVendor(task.pic)}. '
+            'PIC yang ditunjuk adalah ${getNamaPICFromVendor(task.pic)} dengan vendor ${task.vendor ?? task.pic}. '
             'Task menunggu approval dari Project Manager sebelum dapat dikerjakan.',
         data: {
           'type': 'task_created',
@@ -194,7 +194,7 @@ class TaskNotificationService {
         title: 'Status Task Berubah',
         body:
             'Status task "${task.namaTugas}" telah berubah menjadi "$newStatus". '
-            'Task ini dipimpin oleh Project Manager ${task.namaPM} dengan PIC ${getNamaPICFromVendor(task.pic)}. '
+            'Task ini dipimpin oleh Project Manager ${task.namaPM} dengan PIC ${getNamaPICFromVendor(task.pic)} dan vendor ${task.vendor ?? task.pic}. '
             'Silakan periksa detail task untuk informasi lebih lanjut mengenai perubahan status ini.',
         data: {
           'type': 'status_changed',
@@ -220,7 +220,7 @@ class TaskNotificationService {
         title: 'Keterangan Ditambahkan',
         body:
             'Keterangan baru telah ditambahkan pada task "${task.namaTugas}". '
-            'Task ini dipimpin oleh Project Manager ${task.namaPM} dengan PIC ${getNamaPICFromVendor(task.pic)}. '
+            'Task ini dipimpin oleh Project Manager ${task.namaPM} dengan PIC ${getNamaPICFromVendor(task.pic)} dan vendor ${task.vendor ?? task.pic}. '
             'Keterangan: $keterangan. '
             'Silakan periksa detail task untuk informasi lebih lanjut.',
         data: {
@@ -245,7 +245,7 @@ class TaskNotificationService {
       await _sendFCMToUsers(
         title: 'Bukti Task Diupload',
         body:
-            'PIC ${getNamaPICFromVendor(task.pic)} telah mengupload bukti untuk task "${task.namaTugas}". '
+            'PIC ${getNamaPICFromVendor(task.pic)} dengan vendor ${task.vendor ?? task.pic} telah mengupload bukti untuk task "${task.namaTugas}". '
             'Task ini dipimpin oleh Project Manager ${task.namaPM}. '
             'Silakan periksa dan validasi bukti yang telah diupload.',
         data: {
@@ -272,7 +272,7 @@ class TaskNotificationService {
         title: 'Task Selesai',
         body:
             'Task "${task.namaTugas}" telah selesai dilaksanakan. '
-            'Task ini dipimpin oleh ${task.namaPM} dengan PIC ${getNamaPICFromVendor(task.pic)}. '
+            'Task ini dipimpin oleh ${task.namaPM} dengan PIC ${getNamaPICFromVendor(task.pic)} dan vendor ${task.vendor ?? task.pic}. '
             'Terima kasih atas kerja keras dan dedikasi yang telah diberikan dalam menyelesaikan task ini.',
         data: {
           'type': 'task_selesai',
@@ -290,7 +290,7 @@ class TaskNotificationService {
     await _sendFCMToUsers(
       title: 'Task Baru Dibuat',
       body:
-          'Task "${task.namaTugas}" telah dibuat oleh ${task.namaPM} dan menunggu approval dari Project Manager. PIC yang ditunjuk adalah ${getNamaPICFromVendor(task.pic)}.',
+          'Task "${task.namaTugas}" telah dibuat oleh ${task.namaPM} dan menunggu approval dari Project Manager. PIC yang ditunjuk adalah ${getNamaPICFromVendor(task.pic)} dengan vendor ${task.vendor ?? task.pic}.',
       data: {
         'type': 'task_created_admin',
         'taskId': task.uid ?? '',
@@ -304,7 +304,7 @@ class TaskNotificationService {
     await _sendFCMToUsers(
       title: 'Approval Task Diperlukan',
       body:
-          'Task "${task.namaTugas}" yang dibuat oleh ${task.namaPM} membutuhkan approval dari Project Manager sebelum dapat dikerjakan oleh PIC ${getNamaPICFromVendor(task.pic)}.',
+          'Task "${task.namaTugas}" yang dibuat oleh ${task.namaPM} membutuhkan approval dari Project Manager sebelum dapat dikerjakan oleh PIC ${getNamaPICFromVendor(task.pic)} dengan vendor ${task.vendor ?? task.pic}.',
       data: {
         'type': 'need_pm_approval',
         'taskId': task.uid ?? '',
@@ -327,7 +327,7 @@ class TaskNotificationService {
         await _sendFCMToUsers(
           title: 'Task Siap Dikerjakan',
           body:
-              'Task "${task.namaTugas}" telah di-approve oleh Project Manager ${task.namaPM} dan siap dikerjakan oleh PIC ${getNamaPICFromVendor(task.pic)}. Silakan upload bukti setelah selesai.',
+              'Task "${task.namaTugas}" telah di-approve oleh Project Manager ${task.namaPM} dan siap dikerjakan oleh PIC ${getNamaPICFromVendor(task.pic)} dengan vendor ${task.vendor ?? task.pic}. Silakan upload bukti setelah selesai.',
           data: {
             'type': 'task_approved_by_pm',
             'taskId': taskId,
@@ -366,7 +366,7 @@ class TaskNotificationService {
               'title': 'Task Pengingat',
               'body':
                   'Pengingat: Task "${task.namaTugas}" akan dimulai dalam $minutesBeforeStart menit. '
-                  'Task ini dipimpin oleh Project Manager ${task.namaPM} dan PIC ${getNamaPICFromVendor(task.pic)}. '
+                  'Task ini dipimpin oleh Project Manager ${task.namaPM} dan PIC ${getNamaPICFromVendor(task.pic)} dengan vendor ${task.vendor ?? task.pic}. '
                   'Silakan persiapkan diri Anda dan pastikan semua persiapan telah selesai.',
               'payload': taskId,
               'type': 'reminder',
@@ -399,7 +399,7 @@ class TaskNotificationService {
               'title': 'Task Dimulai',
               'body':
                   'Task "${task.namaTugas}" telah dimulai pada pukul ${task.jamMulai}. '
-                  'Task ini dipimpin oleh Project Manager ${task.namaPM} dengan PIC ${getNamaPICFromVendor(task.pic)}. '
+                  'Task ini dipimpin oleh Project Manager ${task.namaPM} dengan PIC ${getNamaPICFromVendor(task.pic)} dan vendor ${task.vendor ?? task.pic}. '
                   'Silakan mulai melaksanakan tugas Anda sesuai dengan rencana yang telah disusun.',
               'payload': taskId,
               'type': 'task_started',
@@ -419,7 +419,7 @@ class TaskNotificationService {
     await _sendFCMToUsers(
       title: 'Validasi Task Diperlukan',
       body:
-          'Task "${task.namaTugas}" telah selesai dikerjakan oleh PIC ${getNamaPICFromVendor(task.pic)} dan bukti telah diupload. Silakan validasi bukti yang telah diupload.',
+          'Task "${task.namaTugas}" telah selesai dikerjakan oleh PIC ${getNamaPICFromVendor(task.pic)} dengan vendor ${task.vendor ?? task.pic} dan bukti telah diupload. Silakan validasi bukti yang telah diupload.',
       data: {
         'type': 'need_pm_validation',
         'taskId': task.uid ?? '',
@@ -433,7 +433,7 @@ class TaskNotificationService {
     await _sendFCMToUsers(
       title: 'Task Selesai & Divalidasi',
       body:
-          'Task "${task.namaTugas}" telah divalidasi dan dinyatakan selesai oleh Project Manager ${task.namaPM}. Bukti yang diupload oleh PIC ${getNamaPICFromVendor(task.pic)} telah diterima dengan baik.',
+          'Task "${task.namaTugas}" telah divalidasi dan dinyatakan selesai oleh Project Manager ${task.namaPM}. Bukti yang diupload oleh PIC ${getNamaPICFromVendor(task.pic)} dengan vendor ${task.vendor ?? task.pic} telah diterima dengan baik.',
       data: {
         'type': 'task_validated_by_pm',
         'taskId': task.uid ?? '',
@@ -447,7 +447,7 @@ class TaskNotificationService {
     await _sendFCMToUsers(
       title: 'Task Ditolak - Upload Ulang Diperlukan',
       body:
-          'Task "${task.namaTugas}" ditolak oleh Project Manager ${task.namaPM}. PIC ${getNamaPICFromVendor(task.pic)} perlu mengupload bukti yang lebih baik atau sesuai dengan standar yang diminta.',
+          'Task "${task.namaTugas}" ditolak oleh Project Manager ${task.namaPM}. PIC ${getNamaPICFromVendor(task.pic)} dengan vendor ${task.vendor ?? task.pic} perlu mengupload bukti yang lebih baik atau sesuai dengan standar yang diminta.',
       data: {
         'type': 'task_rejected_by_pm',
         'taskId': task.uid ?? '',
@@ -461,7 +461,7 @@ class TaskNotificationService {
     await _sendFCMToUsers(
       title: 'Task Masuk Rekap',
       body:
-          'Task "${task.namaTugas}" telah selesai dan masuk ke dalam rekap task. Project Manager ${task.namaPM} dan PIC ${getNamaPICFromVendor(task.pic)} telah menyelesaikan task dengan baik.',
+          'Task "${task.namaTugas}" telah selesai dan masuk ke dalam rekap task. Project Manager ${task.namaPM} dan PIC ${getNamaPICFromVendor(task.pic)} dengan vendor ${task.vendor ?? task.pic} telah menyelesaikan task dengan baik.',
       data: {
         'type': 'task_rekap',
         'taskId': task.uid ?? '',

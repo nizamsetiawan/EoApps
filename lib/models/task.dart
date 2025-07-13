@@ -8,6 +8,7 @@ class Task {
   final String jamSelesai;
   final String namaPM;
   final String pic;
+  final String? vendor;
   String status;
   String? keterangan;
   String? bukti;
@@ -20,6 +21,7 @@ class Task {
     required this.jamSelesai,
     required this.namaPM,
     required this.pic,
+    this.vendor,
     required this.status,
     this.keterangan,
     this.bukti,
@@ -33,6 +35,7 @@ class Task {
       jamSelesai: data['jamSelesai'] ?? '',
       namaPM: data['namaPM'] ?? '',
       pic: data['pic'],
+      vendor: data['vendor'],
       tanggal: (data['tanggal'] as Timestamp).toDate(),
       jamMulai: data['jamMulai'] ?? '',
       status: data['status'] ?? '',

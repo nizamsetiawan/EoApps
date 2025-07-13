@@ -35,6 +35,7 @@ class AdminHomePageState extends State<AdminHomePage> {
   String _jamSelesai = '';
   String _namaPM = '';
   String _pic = '';
+  String _vendor = '';
   TimeOfDay _selectedStartTime = TimeOfDay.now();
   TimeOfDay _selectedEndTime = TimeOfDay.now();
   bool _isLoading = false;
@@ -63,6 +64,55 @@ class AdminHomePageState extends State<AdminHomePage> {
     'FOH',
     'Talent',
   ];
+
+  // Data vendor berdasarkan PIC
+  final Map<String, List<String>> _vendorData = {
+    'Registrasi': ['Kenongo Organizer Tim'],
+    'Runner': ['Kenongo Organizer Tim'],
+    'Dekorasi': [
+      'Rustic Decoration',
+      'Apple Decoration',
+      'AI.Deco',
+      'Rimang Decoration',
+      'Laiqa Decoration',
+    ],
+    'Catering': [
+      'Lila Catering',
+      'Ariska Tim Catering',
+      'Prabu Catering',
+      'Kirana Catering',
+      'Katerinda Catering',
+    ],
+    'Souvenir': [
+      'Our Wedding Souvenir',
+      'Pihak Keluarga Souvenir',
+      'MyCard Souvenir',
+      'Harvest',
+      'Jazzy Souvenir',
+    ],
+    'CPW': [
+      'Yusuf Meyanto MUA',
+      'Lentera Dian',
+      'Attamahera',
+      'Harwmin MUA',
+      'Twintagore MUA',
+    ],
+    'CPP': [
+      'Yusuf Meyanto MUA',
+      'Lentera Dian',
+      'Attamahera',
+      'Harwmin MUA',
+      'Twintagore MUA',
+    ],
+    'FOH': ['IMS Proo Sound System', 'Nvmusic Proo', 'BG Sound Sistem'],
+    'Talent': [
+      'Guntur Dance Company',
+      'CK Dance',
+      'Taff Music',
+      'Robusta Band',
+      'Himalaya Entertainment',
+    ],
+  };
 
   @override
   void initState() {
@@ -114,6 +164,7 @@ class AdminHomePageState extends State<AdminHomePage> {
     _jamSelesai = '';
     _namaPM = '';
     _pic = '';
+    _vendor = '';
     _selectedStartTime = TimeOfDay.now();
     _selectedEndTime = TimeOfDay.now();
     _formKey.currentState?.reset();
@@ -170,6 +221,16 @@ class AdminHomePageState extends State<AdminHomePage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('PIC wajib dipilih'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      if (_vendor.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Vendor wajib dipilih'),
             backgroundColor: Colors.red,
           ),
         );
@@ -298,6 +359,7 @@ class AdminHomePageState extends State<AdminHomePage> {
                                   jamSelesai: _jamSelesai,
                                   namaPM: _namaPM,
                                   pic: _pic,
+                                  vendor: _vendor,
                                   status: 'not complete',
                                 );
 
@@ -1257,9 +1319,12 @@ class AdminHomePageState extends State<AdminHomePage> {
                                 83,
                                 36,
                               ),
+                              checkmarkColor: Colors.white,
                               onSelected: (_) {
                                 setState(() {
                                   _pic = pic;
+                                  _vendor =
+                                      ''; // Reset vendor ketika PIC berubah
                                 });
                               },
                               labelStyle: TextStyle(
@@ -1282,6 +1347,70 @@ class AdminHomePageState extends State<AdminHomePage> {
                 ),
               ),
             ),
+            const SizedBox(height: 16),
+
+            // ========== PILIH VENDOR ==========
+            if (_pic.isNotEmpty)
+              Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Pilih Vendor',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children:
+                            _vendorData[_pic]!.map((vendor) {
+                              final bool isSelected = _vendor == vendor;
+                              return ChoiceChip(
+                                label: Text(vendor),
+                                selected: isSelected,
+                                selectedColor: const Color.fromARGB(
+                                  255,
+                                  33,
+                                  83,
+                                  36,
+                                ),
+                                checkmarkColor: Colors.white,
+                                onSelected: (_) {
+                                  setState(() {
+                                    _vendor = vendor;
+                                  });
+                                },
+                                labelStyle: TextStyle(
+                                  color:
+                                      isSelected ? Colors.white : Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                backgroundColor: Colors.grey[200],
+                              );
+                            }).toList(),
+                      ),
+                      if (_vendor.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            'Vendor wajib dipilih',
+                            style: TextStyle(color: Colors.red[700]),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
             const SizedBox(height: 24),
 
             // ========== BUTTON ==========
@@ -1990,6 +2119,7 @@ class AdminHomePageState extends State<AdminHomePage> {
                                                     jamSelesai: _jamSelesai,
                                                     namaPM: _namaPM,
                                                     pic: _pic,
+                                                    vendor: _vendor,
                                                     status: 'waiting approval',
                                                   );
 

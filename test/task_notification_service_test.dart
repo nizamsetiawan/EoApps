@@ -173,6 +173,7 @@ class TaskScheduler {
     );
   }
 
+  /// Notifikasi untuk upload bukti
   Future<void> notifyUploadBukti(Task task, String buktiUrl) async {
     await workmanager.registerOneOffTask(
       '${task.uid}_bukti_${DateTime.now().millisecondsSinceEpoch}',
@@ -194,6 +195,7 @@ class TaskScheduler {
     );
   }
 
+  /// Notifikasi untuk penambahan keterangan
   Future<void> notifyAddKeterangan(Task task, String keterangan) async {
     await workmanager.registerOneOffTask(
       '${task.uid}_keterangan_${DateTime.now().millisecondsSinceEpoch}',
@@ -211,6 +213,153 @@ class TaskScheduler {
         'taskId': task.uid,
         'taskName': task.namaTugas,
         'keterangan': keterangan,
+      },
+    );
+  }
+
+  /// Notifikasi task baru dibuat untuk admin
+  Future<void> notifyTaskCreatedToAdmin(Task task) async {
+    await workmanager.registerOneOffTask(
+      '${task.uid}_created_admin_${DateTime.now().millisecondsSinceEpoch}',
+      'taskNotificationTask',
+      initialDelay: const Duration(seconds: 1),
+      constraints: Constraints(
+        networkType: NetworkType.connected,
+        requiresBatteryNotLow: false,
+        requiresCharging: false,
+        requiresDeviceIdle: false,
+        requiresStorageNotLow: false,
+      ),
+      inputData: {
+        'type': 'task_created_admin',
+        'taskId': task.uid,
+        'taskName': task.namaTugas,
+      },
+    );
+  }
+
+  /// Notifikasi task butuh approval PM
+  Future<void> notifyNeedApprovalPM(Task task) async {
+    await workmanager.registerOneOffTask(
+      '${task.uid}_need_approval_${DateTime.now().millisecondsSinceEpoch}',
+      'taskNotificationTask',
+      initialDelay: const Duration(seconds: 1),
+      constraints: Constraints(
+        networkType: NetworkType.connected,
+        requiresBatteryNotLow: false,
+        requiresCharging: false,
+        requiresDeviceIdle: false,
+        requiresStorageNotLow: false,
+      ),
+      inputData: {
+        'type': 'need_pm_approval',
+        'taskId': task.uid,
+        'taskName': task.namaTugas,
+      },
+    );
+  }
+
+  /// Notifikasi task sudah di-approve PM
+  Future<void> notifyTaskApprovedByPM(Task task) async {
+    await workmanager.registerOneOffTask(
+      '${task.uid}_approved_pm_${DateTime.now().millisecondsSinceEpoch}',
+      'taskNotificationTask',
+      initialDelay: const Duration(seconds: 1),
+      constraints: Constraints(
+        networkType: NetworkType.connected,
+        requiresBatteryNotLow: false,
+        requiresCharging: false,
+        requiresDeviceIdle: false,
+        requiresStorageNotLow: false,
+      ),
+      inputData: {
+        'type': 'task_approved_by_pm',
+        'taskId': task.uid,
+        'taskName': task.namaTugas,
+      },
+    );
+  }
+
+  /// Notifikasi task butuh validasi PM
+  Future<void> notifyNeedValidationPM(Task task) async {
+    await workmanager.registerOneOffTask(
+      '${task.uid}_need_validation_${DateTime.now().millisecondsSinceEpoch}',
+      'taskNotificationTask',
+      initialDelay: const Duration(seconds: 1),
+      constraints: Constraints(
+        networkType: NetworkType.connected,
+        requiresBatteryNotLow: false,
+        requiresCharging: false,
+        requiresDeviceIdle: false,
+        requiresStorageNotLow: false,
+      ),
+      inputData: {
+        'type': 'need_pm_validation',
+        'taskId': task.uid,
+        'taskName': task.namaTugas,
+      },
+    );
+  }
+
+  /// Notifikasi task sudah divalidasi PM
+  Future<void> notifyTaskValidatedByPM(Task task) async {
+    await workmanager.registerOneOffTask(
+      '${task.uid}_validated_pm_${DateTime.now().millisecondsSinceEpoch}',
+      'taskNotificationTask',
+      initialDelay: const Duration(seconds: 1),
+      constraints: Constraints(
+        networkType: NetworkType.connected,
+        requiresBatteryNotLow: false,
+        requiresCharging: false,
+        requiresDeviceIdle: false,
+        requiresStorageNotLow: false,
+      ),
+      inputData: {
+        'type': 'task_validated_by_pm',
+        'taskId': task.uid,
+        'taskName': task.namaTugas,
+      },
+    );
+  }
+
+  /// Notifikasi task ditolak PM
+  Future<void> notifyTaskRejectedByPM(Task task) async {
+    await workmanager.registerOneOffTask(
+      '${task.uid}_rejected_pm_${DateTime.now().millisecondsSinceEpoch}',
+      'taskNotificationTask',
+      initialDelay: const Duration(seconds: 1),
+      constraints: Constraints(
+        networkType: NetworkType.connected,
+        requiresBatteryNotLow: false,
+        requiresCharging: false,
+        requiresDeviceIdle: false,
+        requiresStorageNotLow: false,
+      ),
+      inputData: {
+        'type': 'task_rejected_by_pm',
+        'taskId': task.uid,
+        'taskName': task.namaTugas,
+      },
+    );
+  }
+
+  /// Notifikasi task masuk rekap
+  Future<void> notifyTaskRekap(Task task) async {
+    await workmanager.registerOneOffTask(
+      '${task.uid}_rekap_${DateTime.now().millisecondsSinceEpoch}',
+      'taskNotificationTask',
+      initialDelay: const Duration(seconds: 1),
+      constraints: Constraints(
+        networkType: NetworkType.connected,
+        requiresBatteryNotLow: false,
+        requiresCharging: false,
+        requiresDeviceIdle: false,
+        requiresStorageNotLow: false,
+      ),
+      inputData: {
+        'type': 'task_rekap',
+        'taskId': task.uid,
+        'taskName': task.namaTugas,
       },
     );
   }
@@ -308,7 +457,6 @@ void main() {
 
     group('Task Event Notification Tests', () {
       /// Test untuk notifikasi pembuatan task baru
-      /// Memastikan notifikasi dikirim ke semua user yang relevan
       test('should send notification for new task', () async {
         final task = createTestTask();
 
@@ -336,7 +484,6 @@ void main() {
       });
 
       /// Test untuk notifikasi perubahan status task
-      /// Memastikan notifikasi dikirim dengan status baru yang benar
       test('should send notification for status change', () async {
         final task = createTestTask();
 
@@ -364,7 +511,6 @@ void main() {
       });
 
       /// Test untuk notifikasi task selesai
-      /// Memastikan notifikasi dikirim ke PM dan PIC
       test('should send notification for task completion', () async {
         final task = createTestTask();
 
@@ -392,7 +538,6 @@ void main() {
       });
 
       /// Test untuk notifikasi upload bukti
-      /// Memastikan notifikasi dikirim dengan URL bukti yang benar
       test('should send notification for evidence upload', () async {
         final task = createTestTask();
 
@@ -423,7 +568,6 @@ void main() {
       });
 
       /// Test untuk notifikasi penambahan keterangan
-      /// Memastikan notifikasi dikirim dengan keterangan yang benar
       test('should send notification for adding remarks', () async {
         final task = createTestTask();
 
@@ -438,6 +582,195 @@ void main() {
         ).thenAnswer((_) async => true);
 
         await taskScheduler.notifyAddKeterangan(task, 'Test remark');
+
+        verify(
+          mockWorkmanager.registerOneOffTask(
+            any,
+            any,
+            initialDelay: anyNamed('initialDelay'),
+            constraints: anyNamed('constraints'),
+            inputData: anyNamed('inputData'),
+          ),
+        ).called(1);
+      });
+
+      /// Test untuk notifikasi task baru dibuat untuk admin
+      test('should send notification for task created to admin', () async {
+        final task = createTestTask();
+
+        when(
+          mockWorkmanager.registerOneOffTask(
+            any,
+            any,
+            initialDelay: anyNamed('initialDelay'),
+            constraints: anyNamed('constraints'),
+            inputData: anyNamed('inputData'),
+          ),
+        ).thenAnswer((_) async => true);
+
+        await taskScheduler.notifyTaskCreatedToAdmin(task);
+
+        verify(
+          mockWorkmanager.registerOneOffTask(
+            any,
+            any,
+            initialDelay: anyNamed('initialDelay'),
+            constraints: anyNamed('constraints'),
+            inputData: anyNamed('inputData'),
+          ),
+        ).called(1);
+      });
+
+      /// Test untuk notifikasi task butuh approval PM
+      test('should send notification for task needing PM approval', () async {
+        final task = createTestTask();
+
+        when(
+          mockWorkmanager.registerOneOffTask(
+            any,
+            any,
+            initialDelay: anyNamed('initialDelay'),
+            constraints: anyNamed('constraints'),
+            inputData: anyNamed('inputData'),
+          ),
+        ).thenAnswer((_) async => true);
+
+        await taskScheduler.notifyNeedApprovalPM(task);
+
+        verify(
+          mockWorkmanager.registerOneOffTask(
+            any,
+            any,
+            initialDelay: anyNamed('initialDelay'),
+            constraints: anyNamed('constraints'),
+            inputData: anyNamed('inputData'),
+          ),
+        ).called(1);
+      });
+
+      /// Test untuk notifikasi task sudah di-approve PM
+      test('should send notification for task approved by PM', () async {
+        final task = createTestTask();
+
+        when(
+          mockWorkmanager.registerOneOffTask(
+            any,
+            any,
+            initialDelay: anyNamed('initialDelay'),
+            constraints: anyNamed('constraints'),
+            inputData: anyNamed('inputData'),
+          ),
+        ).thenAnswer((_) async => true);
+
+        await taskScheduler.notifyTaskApprovedByPM(task);
+
+        verify(
+          mockWorkmanager.registerOneOffTask(
+            any,
+            any,
+            initialDelay: anyNamed('initialDelay'),
+            constraints: anyNamed('constraints'),
+            inputData: anyNamed('inputData'),
+          ),
+        ).called(1);
+      });
+
+      /// Test untuk notifikasi task butuh validasi PM
+      test('should send notification for task needing PM validation', () async {
+        final task = createTestTask();
+
+        when(
+          mockWorkmanager.registerOneOffTask(
+            any,
+            any,
+            initialDelay: anyNamed('initialDelay'),
+            constraints: anyNamed('constraints'),
+            inputData: anyNamed('inputData'),
+          ),
+        ).thenAnswer((_) async => true);
+
+        await taskScheduler.notifyNeedValidationPM(task);
+
+        verify(
+          mockWorkmanager.registerOneOffTask(
+            any,
+            any,
+            initialDelay: anyNamed('initialDelay'),
+            constraints: anyNamed('constraints'),
+            inputData: anyNamed('inputData'),
+          ),
+        ).called(1);
+      });
+
+      /// Test untuk notifikasi task sudah divalidasi PM
+      test('should send notification for task validated by PM', () async {
+        final task = createTestTask();
+
+        when(
+          mockWorkmanager.registerOneOffTask(
+            any,
+            any,
+            initialDelay: anyNamed('initialDelay'),
+            constraints: anyNamed('constraints'),
+            inputData: anyNamed('inputData'),
+          ),
+        ).thenAnswer((_) async => true);
+
+        await taskScheduler.notifyTaskValidatedByPM(task);
+
+        verify(
+          mockWorkmanager.registerOneOffTask(
+            any,
+            any,
+            initialDelay: anyNamed('initialDelay'),
+            constraints: anyNamed('constraints'),
+            inputData: anyNamed('inputData'),
+          ),
+        ).called(1);
+      });
+
+      /// Test untuk notifikasi task ditolak PM
+      test('should send notification for task rejected by PM', () async {
+        final task = createTestTask();
+
+        when(
+          mockWorkmanager.registerOneOffTask(
+            any,
+            any,
+            initialDelay: anyNamed('initialDelay'),
+            constraints: anyNamed('constraints'),
+            inputData: anyNamed('inputData'),
+          ),
+        ).thenAnswer((_) async => true);
+
+        await taskScheduler.notifyTaskRejectedByPM(task);
+
+        verify(
+          mockWorkmanager.registerOneOffTask(
+            any,
+            any,
+            initialDelay: anyNamed('initialDelay'),
+            constraints: anyNamed('constraints'),
+            inputData: anyNamed('inputData'),
+          ),
+        ).called(1);
+      });
+
+      /// Test untuk notifikasi task masuk rekap
+      test('should send notification for task rekap', () async {
+        final task = createTestTask();
+
+        when(
+          mockWorkmanager.registerOneOffTask(
+            any,
+            any,
+            initialDelay: anyNamed('initialDelay'),
+            constraints: anyNamed('constraints'),
+            inputData: anyNamed('inputData'),
+          ),
+        ).thenAnswer((_) async => true);
+
+        await taskScheduler.notifyTaskRekap(task);
 
         verify(
           mockWorkmanager.registerOneOffTask(

@@ -755,6 +755,27 @@ class _PMHomePageState extends State<PMHomePage> {
                                         const SizedBox(width: 8),
                                         Expanded(
                                           child: Text(
+                                            'Nama Vendor : ${task.vendor ?? task.pic}',
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                            // maxLines: 2,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.category,
+                                          size: 16,
+                                          color: Colors.grey,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
                                             'Vendor : ${task.pic}',
                                             style: const TextStyle(
                                               fontSize: 16,

@@ -17,6 +17,7 @@ Future<String?> addTask(Task task) async {
       'jamSelesai': task.jamSelesai,
       'namaPM': task.namaPM,
       'pic': task.pic,
+      'vendor': task.vendor,
       'status': 'waiting approval', // Status default untuk approval PM
     });
 
@@ -29,6 +30,7 @@ Future<String?> addTask(Task task) async {
       jamSelesai: task.jamSelesai,
       namaPM: task.namaPM,
       pic: task.pic,
+      vendor: task.vendor,
       status: 'waiting approval',
     );
 
@@ -183,14 +185,24 @@ Future<void> updateTaskKeterangan(String taskId, String keterangan) async {
 
     // Validasi: Task yang sudah "done" tidak bisa diubah keterangannya
     if (currentTask.status == 'done') {
-      print('Task yang sudah selesai tidak dapat diubah keterangannya');
       return;
     }
 
     await FirebaseFirestore.instance.collection('tasks').doc(taskId).update({
       'keterangan': keterangan,
     });
-    // Tidak ada notifikasi untuk penambahan keterangan
+
+    // Trigger notifikasi penambahan keterangan
+    final taskNotificationService = TaskNotificationService();
+    final taskSnapshot =
+        await FirebaseFirestore.instance.collection('tasks').doc(taskId).get();
+    if (taskSnapshot.exists) {
+      final updatedTask = Task.fromFirestore(taskSnapshot);
+      await taskNotificationService.notifyAddKeterangan(
+        updatedTask,
+        keterangan,
+      );
+    }
   } catch (e) {
     rethrow;
   }

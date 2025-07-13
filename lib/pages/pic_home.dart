@@ -2014,11 +2014,34 @@ class _PICHomePageState extends State<PICHomePage> {
                                             ],
                                           ),
                                           const SizedBox(height: 4),
-                                          // Info Vendor
+                                          // Info Nama Vendor
                                           Row(
                                             children: [
                                               const Icon(
                                                 Icons.business,
+                                                size: 16,
+                                                color: Colors.grey,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  'Nama Vendor : ${task.vendor ?? task.pic}',
+                                                  style: const TextStyle(
+                                                    fontSize: 16,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                                // maxLines: 2,
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 4),
+                                          // Info Vendor
+                                          Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.category,
                                                 size: 16,
                                                 color: Colors.grey,
                                               ),
